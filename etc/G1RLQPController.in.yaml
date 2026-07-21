@@ -49,12 +49,14 @@ ObserverPipelines:
 states: {}
 # Transitions map
 transitions:
-- [NewRLQPController_Initial, OK, NewRLQPController_Initial, Strict]
+- [G1RLQPController_Initial, OK, G1RLQPController_Initial, Strict]
 # Initial state
-init: NewRLQPController_Initial
+init: G1RLQPController_Initial
 
 # RL policy configuration parameters
-policy_path: ["policyName1.onnx", "policyName2.onnx"]  # Path to the RL policy file(s) 
+policy_path:
+  - "/home/raphaelbarrabes/workspace/new-rl-qp-controller/policy/2026-07-18_13-45-24.onnx"
+
 default_policy_index: 0 # Index of the default policy to use
 policies:
   # index 0 : policyName1

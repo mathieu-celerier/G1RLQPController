@@ -39,7 +39,7 @@
  *
  * ## Configuration
  *
- * All parameters are loaded from the YAML config file. See etc/NewRLQPController.in.yaml
+ * All parameters are loaded from the YAML config file. See etc/G1RLQPController.in.yaml
  * for a fully documented example. Key sections per policy entry:
  *   - policy_path:       Path(s) to ONNX policy file(s)
  *   - action_scale:      Per-joint scale applied to raw policy output (map: joint -> scale)
@@ -70,9 +70,9 @@
  * @see utils.h for the observation/action state machine helpers.
  * @see RLPolicyInterface.h for ONNX inference wrapper.
  */
-struct NewRLQPController_DLLAPI NewRLQPController : public mc_control::fsm::Controller
+struct G1RLQPController_DLLAPI G1RLQPController : public mc_control::fsm::Controller
 {
-  NewRLQPController(mc_rbdyn::RobotModulePtr rm, double dt, const mc_rtc::Configuration & config);
+  G1RLQPController(mc_rbdyn::RobotModulePtr rm, double dt, const mc_rtc::Configuration & config);
 
   bool run() override;
   void reset(const mc_control::ControllerResetData & reset_data) override;

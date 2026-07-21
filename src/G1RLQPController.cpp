@@ -1,8 +1,8 @@
-#include "NewRLQPController.h"
+#include "G1RLQPController.h"
 
 #include <RBDyn/MultiBodyConfig.h>
 
-NewRLQPController::NewRLQPController(mc_rbdyn::RobotModulePtr rm, double dt, const mc_rtc::Configuration & config)
+G1RLQPController::G1RLQPController(mc_rbdyn::RobotModulePtr rm, double dt, const mc_rtc::Configuration & config)
 : mc_control::fsm::Controller(rm, dt, config, Backend::TVM)
 {
   config_ = config;
@@ -26,10 +26,10 @@ NewRLQPController::NewRLQPController(mc_rbdyn::RobotModulePtr rm, double dt, con
 
   addGui();
   addLog();
-  mc_rtc::log::success("NewRLQPController init done");
+  mc_rtc::log::success("G1RLQPController init done");
 }
 
-bool NewRLQPController::run()
+bool G1RLQPController::run()
 {
   if(printLimits_) computeLimits();
   bool run = mc_control::fsm::Controller::run(mc_solver::FeedbackType::ClosedLoopIntegrateReal);
@@ -40,15 +40,15 @@ bool NewRLQPController::run()
   return run; // Return false if QP fails
 }
 
-void NewRLQPController::reset(const mc_control::ControllerResetData & reset_data)
+void G1RLQPController::reset(const mc_control::ControllerResetData & reset_data)
 {
   mc_control::fsm::Controller::reset(reset_data);
 }
 
-void NewRLQPController::initializeRobot()
+void G1RLQPController::initializeRobot()
 {
   useQP_ = config_("policies")[currentPolicyIndex]("use_QP", true);
-  mc_rtc::log::info("[NewRLQPController] Using Torque Control mode");
+  mc_rtc::log::info("[G1RLQPController] Using Torque Control mode");
   datastore().make<std::string>("ControlMode", "Torque");
 
   // get the joints order (urdf) depending on the robot used
@@ -98,7 +98,7 @@ void NewRLQPController::initializeRobot()
   torqueJointTask->setDamping(kd_);
 }
 
-void NewRLQPController::initializeRLPolicy()
+void G1RLQPController::initializeRLPolicy()
 {
   // load policy specific configuration
   policyPaths_ = config_("policy_path", std::vector<std::string>{"walking_better_h1.onnx"});
@@ -121,7 +121,7 @@ void NewRLQPController::initializeRLPolicy()
   // }
 }
 
-void NewRLQPController::initializeRLObservation()
+void G1RLQPController::initializeRLObservation()
 {
   // Observation
   auto & robot = realRobot(robots()[0].name());
@@ -188,7 +188,7 @@ void NewRLQPController::initializeRLObservation()
   // jointAction[0] = currentAction;
 }
 
-bool NewRLQPController::byPassQPControl()
+bool G1RLQPController::byPassQPControl()
 {
   if(useQP_) return false; // QP is not bypassed, do nothing
 
@@ -212,48 +212,48 @@ bool NewRLQPController::byPassQPControl()
   return true;
 }
 
-void NewRLQPController::addLog()
+void G1RLQPController::addLog()
 {
   // Robot State variables
-  logger().addLogEntry("NewRLQPController_kp_base", [this]() { return kpBase_; });
-  logger().addLogEntry("NewRLQPController_kd_base", [this]() { return kdBase_; });
-  logger().addLogEntry("NewRLQPController_kp_current", [this]() { return kp_; });
-  logger().addLogEntry("NewRLQPController_kd_current", [this]() { return kd_; });
-  logger().addLogEntry("NewRLQPController_pd_gains_ratio", [this]() { return pdGainsRatio_; });
+  logger().addLogEntry("G1RLQPController_kp_base", [this]() { return kpBase_; });
+  logger().addLogEntry("G1RLQPController_kd_base", [this]() { return kdBase_; });
+  logger().addLogEntry("G1RLQPController_kp_current", [this]() { return kp_; });
+  logger().addLogEntry("G1RLQPController_kd_current", [this]() { return kd_; });
+  logger().addLogEntry("G1RLQPController_pd_gains_ratio", [this]() { return pdGainsRatio_; });
 
   // RL variables
-  logger().addLogEntry("NewRLQPController_RL_q", [this]() { return q_rl; });
-  logger().addLogEntry("NewRLQPController_RL_qZero", [this]() { return q_zero; });
-  logger().addLogEntry("NewRLQPController_RL_currentObservation", [this]() { return currentObservation; });
-  logger().addLogEntry("NewRLQPController_RL_currentAction", [this]() { return currentAction; });
-  logger().addLogEntry("NewRLQPController_RL_currentActionScaled", [this]() { return currentActionScaled; });
-  logger().addLogEntry("NewRLQPController_RL_actionScale", [this]() { return actionScale; });
+  logger().addLogEntry("G1RLQPController_RL_q", [this]() { return q_rl; });
+  logger().addLogEntry("G1RLQPController_RL_qZero", [this]() { return q_zero; });
+  logger().addLogEntry("G1RLQPController_RL_currentObservation", [this]() { return currentObservation; });
+  logger().addLogEntry("G1RLQPController_RL_currentAction", [this]() { return currentAction; });
+  logger().addLogEntry("G1RLQPController_RL_currentActionScaled", [this]() { return currentActionScaled; });
+  logger().addLogEntry("G1RLQPController_RL_actionScale", [this]() { return actionScale; });
 
   // Controller state variables
-  logger().addLogEntry("NewRLQPController_useQP", [this]() { return useQP_; });
+  logger().addLogEntry("G1RLQPController_useQP", [this]() { return useQP_; });
 
   // Log current policy (combined index and path)
-  logger().addLogEntry("NewRLQPController_currentPolicy", [this]()
+  logger().addLogEntry("G1RLQPController_currentPolicy", [this]()
                        { return std::to_string(currentPolicyIndex) + ": " + policyPaths_[currentPolicyIndex]; });
 
   // Log observation
   // for (int i = 0; i < HISTORY_SIZE; ++i) {
-  //   logger().addLogEntry("NewRLQPController_obs_linVel_" + std::to_string(i), [this, i]() { return linVel[i]; });
-  //   logger().addLogEntry("NewRLQPController_obs_angVel_" + std::to_string(i), [this, i]() { return angVel[i]; });
-  //   logger().addLogEntry("NewRLQPController_obs_projectedGravity_" + std::to_string(i), [this, i]() { return
-  //   projectedGravity[i]; }); logger().addLogEntry("NewRLQPController_obs_velCmd_" + std::to_string(i), [this, i]() {
-  //   return velCmd[i]; }); logger().addLogEntry("NewRLQPController_obs_jointPos_" + std::to_string(i), [this, i]() {
-  //   return jointPos[i]; }); logger().addLogEntry("NewRLQPController_obs_jointVel_" + std::to_string(i), [this, i]() {
-  //   return jointVel[i]; }); logger().addLogEntry("NewRLQPController_obs_jointAction_" + std::to_string(i), [this,
-  //   i]() { return jointAction[i]; }); logger().addLogEntry("NewRLQPController_obs_footContactForces_" +
+  //   logger().addLogEntry("G1RLQPController_obs_linVel_" + std::to_string(i), [this, i]() { return linVel[i]; });
+  //   logger().addLogEntry("G1RLQPController_obs_angVel_" + std::to_string(i), [this, i]() { return angVel[i]; });
+  //   logger().addLogEntry("G1RLQPController_obs_projectedGravity_" + std::to_string(i), [this, i]() { return
+  //   projectedGravity[i]; }); logger().addLogEntry("G1RLQPController_obs_velCmd_" + std::to_string(i), [this, i]() {
+  //   return velCmd[i]; }); logger().addLogEntry("G1RLQPController_obs_jointPos_" + std::to_string(i), [this, i]() {
+  //   return jointPos[i]; }); logger().addLogEntry("G1RLQPController_obs_jointVel_" + std::to_string(i), [this, i]() {
+  //   return jointVel[i]; }); logger().addLogEntry("G1RLQPController_obs_jointAction_" + std::to_string(i), [this,
+  //   i]() { return jointAction[i]; }); logger().addLogEntry("G1RLQPController_obs_footContactForces_" +
   //   std::to_string(i), [this, i]() { return footContactForces[i]; });
   // }
 }
 
-void NewRLQPController::addGui()
+void G1RLQPController::addGui()
 {
   gui()->addElement(
-      {"NewRLQPController", "Policy"},
+      {"G1RLQPController", "Policy"},
       mc_rtc::gui::Label("Current policy",
                          [this]() -> const std::string & { return policyPaths_[currentPolicyIndex]; }),
       mc_rtc::gui::Label("Policy Loaded", [this]() { return rlPolicy->isLoaded() ? "Yes" : "No"; }),
@@ -261,7 +261,7 @@ void NewRLQPController::addGui()
       mc_rtc::gui::Label("Action Size", [this]() { return std::to_string(rlPolicy->getActionSize()); }));
 
   // Add PD gains ratio slider
-  gui()->addElement({"NewRLQPController", "PD Gains"},
+  gui()->addElement({"G1RLQPController", "PD Gains"},
                     mc_rtc::gui::NumberSlider(
                         "PD Gains Ratio", [this]() { return pdGainsRatio_; },
                         [this](double v)
@@ -282,42 +282,42 @@ void NewRLQPController::addGui()
       mc_rtc::gui::Label("Print joint limits", [this]() { return printLimits_ ? "Enabled" : "Disabled"; }));
 
   // Example of changing the velocity command from the GUI, this should be adapted to the specific policy and
-  // observation used. gui()->addElement({"NewRLQPController", "Velocity Command"},
+  // observation used. gui()->addElement({"G1RLQPController", "Velocity Command"},
   //     mc_rtc::gui::ArrayInput("Current Velocity Command", {"vx", "vy", "yaw_rate"}, currentVelCmd));
 }
 
-void NewRLQPController::configRL()
+void G1RLQPController::configRL()
 {
-  mc_rtc::log::info("[NewRLQPController] Loading RL policy [{}]: {}", currentPolicyIndex,
+  mc_rtc::log::info("[G1RLQPController] Loading RL policy [{}]: {}", currentPolicyIndex,
                     policyPaths_[currentPolicyIndex]);
   try
   {
     rlPolicy = std::make_unique<RLPolicyInterface>(policyPaths_[currentPolicyIndex]);
     if(rlPolicy)
     {
-      mc_rtc::log::success("[NewRLQPController] RL policy loaded successfully");
+      mc_rtc::log::success("[G1RLQPController] RL policy loaded successfully");
       // Initialize observation vector with the correct size from the loaded policy
       currentObservation = Eigen::VectorXd::Zero(rlPolicy->getObservationSize());
-      mc_rtc::log::info("[NewRLQPController] Initialized observation vector with size: {}",
+      mc_rtc::log::info("[G1RLQPController] Initialized observation vector with size: {}",
                         rlPolicy->getObservationSize());
       currentAction = Eigen::VectorXd::Zero(rlPolicy->getActionSize());
-      mc_rtc::log::info("[NewRLQPController] Initialized action vector with size: {}", rlPolicy->getActionSize());
+      mc_rtc::log::info("[G1RLQPController] Initialized action vector with size: {}", rlPolicy->getActionSize());
     }
     else
     {
-      mc_rtc::log::error_and_throw("[NewRLQPController] RL policy creation failed - policy is null");
+      mc_rtc::log::error_and_throw("[G1RLQPController] RL policy creation failed - policy is null");
     }
   }
   catch(const std::exception & e)
   {
-    mc_rtc::log::error_and_throw("[NewRLQPController] Failed to load RL policy: {}", e.what());
+    mc_rtc::log::error_and_throw("[G1RLQPController] Failed to load RL policy: {}", e.what());
   }
 
   policyStepSize = config_("policies")[currentPolicyIndex]("policy_step_size", 0.01);
   const double physicsStepSize = config_("policies")[currentPolicyIndex]("physics_step_size", 0.001);
   if(physicsStepSize - timeStep > 1e-6)
   {
-    mc_rtc::log::warning("[NewRLQPController] Physics step size ({:.3f} s) is larger than controller time step ({:.3f} "
+    mc_rtc::log::warning("[G1RLQPController] Physics step size ({:.3f} s) is larger than controller time step ({:.3f} "
                          "s). This may cause issues with the policy. Consider fixing the controller time step.",
                          physicsStepSize, timeStep);
   }
@@ -325,7 +325,7 @@ void NewRLQPController::configRL()
   refJointOrderRLAction = config_("policies")[currentPolicyIndex]("ref_joint_order", std::vector<std::string>{});
   if(refJointOrderRLAction.size() != size_t(rlPolicy->getActionSize()))
   {
-    mc_rtc::log::error_and_throw("[NewRLQPController] Reference joint order size ({}) does not match policy action "
+    mc_rtc::log::error_and_throw("[G1RLQPController] Reference joint order size ({}) does not match policy action "
                                  "size ({}). Please check the configuration.",
                                  refJointOrderRLAction.size(), rlPolicy->getActionSize());
   }
@@ -351,7 +351,7 @@ void NewRLQPController::configRL()
 
   if(keys.size() != static_cast<size_t>(nbActuatedJoints))
   {
-    mc_rtc::log::error_and_throw("[NewRLQPController] The number of joints in q0 config ({}) does not match the "
+    mc_rtc::log::error_and_throw("[G1RLQPController] The number of joints in q0 config ({}) does not match the "
                                  "robot's dof number ({}). Please check the configuration.",
                                  keys.size(), nbActuatedJoints);
   }
@@ -368,7 +368,7 @@ void NewRLQPController::configRL()
   }
   if(orderMatches)
     mc_rtc::log::info(
-        "[NewRLQPController] The order of joints in q0 config matches the robot's joint order in mc_rtc.");
+        "[G1RLQPController] The order of joints in q0 config matches the robot's joint order in mc_rtc.");
 
   // rlFrameworkToMcRtcJointMap.resize(dofNumber, -1); // Initialize with -1 to indicate unmapped joints
   mcRtcToRLFrameworkJointMap.resize(nbActuatedJoints, -1);
@@ -391,12 +391,12 @@ void NewRLQPController::configRL()
   {
     if(mcRtcToRLFrameworkJointMap[i] == -1)
     {
-      mc_rtc::log::error_and_throw("[NewRLQPController] Joint '{}' was not properly mapped!", jointNames[i]);
+      mc_rtc::log::error_and_throw("[G1RLQPController] Joint '{}' was not properly mapped!", jointNames[i]);
     }
   }
 }
 
-void NewRLQPController::computeLimits()
+void G1RLQPController::computeLimits()
 {
   const double epsilon = 1e-5;
 
@@ -428,32 +428,32 @@ void NewRLQPController::computeLimits()
 
     if(currentPos[i][0] > posLimitUp + epsilon)
     {
-      mc_rtc::log::warning("[NewRLQPController] Joint {} position upper limit breached: currentPos = {}, limit = {}",
+      mc_rtc::log::warning("[G1RLQPController] Joint {} position upper limit breached: currentPos = {}, limit = {}",
                            joint, currentPos[i][0], posLimitUp);
     }
     if(currentPos[i][0] < posLimitLow - epsilon)
     {
-      mc_rtc::log::warning("[NewRLQPController] Joint {} position lower limit breached: currentPos = {}, limit = {}",
+      mc_rtc::log::warning("[G1RLQPController] Joint {} position lower limit breached: currentPos = {}, limit = {}",
                            joint, currentPos[i][0], posLimitLow);
     }
     if(currentVel[i][0] > velLimitUp + epsilon)
     {
-      mc_rtc::log::warning("[NewRLQPController] Joint {} velocity upper limit breached: currentVel = {}, limit = {}",
+      mc_rtc::log::warning("[G1RLQPController] Joint {} velocity upper limit breached: currentVel = {}, limit = {}",
                            joint, currentVel[i][0], velLimitUp);
     }
     if(currentVel[i][0] < velLimitLow - epsilon)
     {
-      mc_rtc::log::warning("[NewRLQPController] Joint {} velocity lower limit breached: currentVel = {}, limit = {}",
+      mc_rtc::log::warning("[G1RLQPController] Joint {} velocity lower limit breached: currentVel = {}, limit = {}",
                            joint, currentVel[i][0], velLimitLow);
     }
     if(currentTau[i][0] > tauLimitUp + epsilon)
     {
-      mc_rtc::log::warning("[NewRLQPController] Joint {} torque upper limit breached: currentTau = {}, limit = {}",
+      mc_rtc::log::warning("[G1RLQPController] Joint {} torque upper limit breached: currentTau = {}, limit = {}",
                            joint, currentTau[i][0], tauLimitUp);
     }
     if(currentTau[i][0] < tauLimitLow - epsilon)
     {
-      mc_rtc::log::warning("[NewRLQPController] Joint {} torque lower limit breached: currentTau = {}, limit = {}",
+      mc_rtc::log::warning("[G1RLQPController] Joint {} torque lower limit breached: currentTau = {}, limit = {}",
                            joint, currentTau[i][0], tauLimitLow);
     }
   }

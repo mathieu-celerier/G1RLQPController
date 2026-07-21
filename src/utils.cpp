@@ -2,30 +2,30 @@
 #include <Eigen/src/Core/Matrix.h>
 #include <mc_rtc/logging.h>
 
-#include "NewRLQPController.h"
+#include "G1RLQPController.h"
 
 void utils::start_rl_state(mc_control::fsm::Controller & ctl_, std::string state_name)
 {
-  auto & ctl = static_cast<NewRLQPController&>(ctl_);
+  auto & ctl = static_cast<G1RLQPController&>(ctl_);
   state_name_ = state_name;
-  mc_rtc::log::info("[NewRLQPController::utils] {} state started", state_name);
+  mc_rtc::log::info("[G1RLQPController::utils] {} state started", state_name);
 
   syncTime_ = ctl.policyStepSize;
     
   if(!ctl.rlPolicy || !ctl.rlPolicy->isLoaded())
   {
-    mc_rtc::log::error("[NewRLQPController::utils] RL policy not loaded in {} state", state_name);
+    mc_rtc::log::error("[G1RLQPController::utils] RL policy not loaded in {} state", state_name);
     return;
   }
 
   ctl.initializeRLObservation();
 
-  mc_rtc::log::success("[NewRLQPController::utils] {} state initialization completed", state_name);
+  mc_rtc::log::success("[G1RLQPController::utils] {} state initialization completed", state_name);
 }
 
 void utils::run_rl_state(mc_control::fsm::Controller & ctl_)
 {
-  auto & ctl = static_cast<NewRLQPController&>(ctl_);
+  auto & ctl = static_cast<G1RLQPController&>(ctl_);
   try
   {
     syncTime_ += ctl.timeStep;
@@ -43,13 +43,13 @@ void utils::run_rl_state(mc_control::fsm::Controller & ctl_)
   }
   catch(const std::exception & e)
   {
-    mc_rtc::log::error("[NewRLQPController::utils] Error during RL state run: {}", e.what());
+    mc_rtc::log::error("[G1RLQPController::utils] Error during RL state run: {}", e.what());
   }
 }
 
 Eigen::VectorXd utils::getCurrentObservation(mc_control::fsm::Controller & ctl_)
 {
-  auto & ctl = static_cast<NewRLQPController&>(ctl_);
+  auto & ctl = static_cast<G1RLQPController&>(ctl_);
   Eigen::VectorXd obs(ctl.rlPolicy->getObservationSize());
   obs = Eigen::VectorXd::Zero(ctl.rlPolicy->getObservationSize());
 
@@ -123,11 +123,11 @@ Eigen::VectorXd utils::getCurrentObservation(mc_control::fsm::Controller & ctl_)
     }
     default:
     {
-      mc_rtc::log::error("[NewRLQPController::utils] Unknown policy index: {}", ctl.currentPolicyIndex);
+      mc_rtc::log::error("[G1RLQPController::utils] Unknown policy index: {}", ctl.currentPolicyIndex);
       break;
     }
   }
 
-  assert(offset == obs.size() && "[NewRLQPController::utils] Observation size mismatch: written bytes != allocated size");
+  assert(offset == obs.size() && "[G1RLQPController::utils] Observation size mismatch: written bytes != allocated size");
   return obs;
 }

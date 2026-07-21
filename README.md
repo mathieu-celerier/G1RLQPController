@@ -29,22 +29,22 @@ Requirements
 Quick start
 --
 
-1. Renaming the controller from `NewRLQPController` to `MyController`. In a shell (Git Bash on Windows, replace sed with gsed on macOS):
+1. Renaming the controller from `G1RLQPController` to `G1RLQPController`. In a shell (Git Bash on Windows, replace sed with gsed on macOS):
 
 ```bash
-sed -i -e's/NewRLQPController/MyController/g' `find . -not -path '*/.*' -type f`
-git mv src/NewRLQPController.cpp src/MyController.cpp
-git mv src/NewRLQPController.h src/MyController.h
-git mv src/states/NewRLQPController_Initial.cpp src/states/MyController_Initial.cpp
-git mv src/states/NewRLQPController_Initial.h src/states/MyController_Initial.h
-git mv etc/NewRLQPController.in.yaml etc/MyController.in.yaml
+sed -i -e's/G1RLQPController/G1RLQPController/g' `find . -not -path '*/.*' -type f`
+git mv src/G1RLQPController.cpp src/G1RLQPController.cpp
+git mv src/G1RLQPController.h src/G1RLQPController.h
+git mv src/states/G1RLQPController_Initial.cpp src/states/G1RLQPController_Initial.cpp
+git mv src/states/G1RLQPController_Initial.h src/states/G1RLQPController_Initial.h
+git mv etc/G1RLQPController.in.yaml etc/G1RLQPController.in.yaml
 ```
 
 2. You can customize the project name in vcpkg.json as well, note that this must follow [vcpkg manifest rules](https://github.com/microsoft/vcpkg/blob/master/docs/users/manifests.md)
 
 2. Build and install the project
 
-3. Run using your [mc_rtc] interface of choice, and setting `Enabled` to `MyController`
+3. Run using your [mc_rtc] interface of choice, and setting `Enabled` to `G1RLQPController`
 
 Installation
 --
@@ -67,7 +67,7 @@ config.
 
 ### Step 2 — Fill in the YAML config
 
-Edit `etc/MyController.in.yaml`. Each entry under `policies` corresponds to
+Edit `etc/G1RLQPController.in.yaml`. Each entry under `policies` corresponds to
 one ONNX file (indexed by `default_policy_index`):
 
 ```yaml
@@ -115,7 +115,7 @@ policies:
 Open `src/utils.cpp` and fill in `getCurrentObservation()` for your policy
 index. The observation must exactly match the training environment.
 
-Then implement `initializeRLObservation()` in `NewRLQPController.cpp` to
+Then implement `initializeRLObservation()` in `G1RLQPController.cpp` to
 populate index 0 of each buffer from the current robot state.
 
 Example for a policy with history_length=5 can be found in the commented parts of the code.

@@ -6,7 +6,7 @@
  *
  * utils provides three FSM hooks (start / run / teardown) and the observation
  * assembly function getCurrentObservation(). One utils instance lives inside
- * NewRLQPController and is called from each FSM RL state.
+ * G1RLQPController and is called from each FSM RL state.
  *
  * ## Usage in an FSM state
  *
@@ -14,7 +14,7 @@
  * // In MyState.cpp
  * bool MyState::run(mc_control::fsm::Controller & ctl)
  * {
- *   auto & c = static_cast<NewRLQPController&>(ctl);
+ *   auto & c = static_cast<G1RLQPController&>(ctl);
  *   c.utilsClass.run_rl_state(ctl);
  *   // ... handle transitions ...
  * }
@@ -24,7 +24,7 @@
  *
  * 1. Add a new case to getCurrentObservation() that fills the observation vector
  *    to exactly match the training observation order and transformations.
- * 2. Uncomment and populate the relevant history buffers in NewRLQPController.h.
+ * 2. Uncomment and populate the relevant history buffers in G1RLQPController.h.
  * 3. Add the corresponding case index to run_rl_state() if needed.
  *
  * ## Observation construction rules

@@ -35,6 +35,7 @@ G1RLQPController::G1RLQPController(mc_rbdyn::RobotModulePtr rm, double dt, const
 
   initializeRobot();
   initializeRLPolicy();
+  loadSimTest();
 
   postureTaskRL_ = getPostureTask(robot().name());
   if(!postureTaskRL_)
@@ -61,6 +62,8 @@ bool G1RLQPController::run()
   {
     computeLimits();
   }
+
+  updateSimTest();
 
   const bool qpSuccess = mc_control::fsm::Controller::run(
       mc_solver::FeedbackType::ClosedLoopIntegrateReal);
@@ -636,6 +639,68 @@ if(++baseVelocityDebugCounter >= 400)
   if(observeQaccExt_) { qaccExt[0] = computeQaccExt(); }
 }
 
+void G1RLQPController::loadSimTest()
+{
+  if(!config_.has("sim_test")) { return; }
+  const auto st = config_("sim_test");
+  simTestEnabled_ = true;
+  if(st.has("command_schedule"))
+  {
+    for(const std::vector<double> & row : st("command_schedule"))
+    {
+      if(row.size() != 4) { mc_rtc::log::error_and_throw("[G1RLQPController] command_schedule rows are [t, vx, vy, wz]"); }
+      commandSchedule_.push_back({row[0], row[1], row[2], row[3]});
+    }
+  }
+  if(st.has("pushes"))
+  {
+    const auto p = st("pushes");
+    pushesEnabled_ = true;
+    p("body", pushBody_);
+    p("force", pushForce_);
+    p("duration", pushDuration_);
+    p("interval", pushInterval_);
+    pushRng_.seed(static_cast<unsigned>(p("seed", 0)));
+    nextPushTime_ = p("start", 2.0);
+  }
+  mc_rtc::log::info("[G1RLQPController] sim_test: {} command entries, pushes {} (body {}, {}-{} N)",
+                    commandSchedule_.size(), pushesEnabled_, pushBody_, pushForce_[0], pushForce_[1]);
+}
+
+void G1RLQPController::updateSimTest()
+{
+  if(!simTestEnabled_ || rlmode != ACCELERATION) { return; }
+  const double t = simTestTime_;
+  simTestTime_ += timeStep;
+
+  for(const auto & row : commandSchedule_)
+  {
+    if(row[0] <= t) { currentVelCmd << row[1], row[2], row[3]; }
+  }
+
+  if(!pushesEnabled_) { return; }
+  auto uniform = [this](const std::array<double, 2> & r)
+  { return std::uniform_real_distribution<double>(r[0], r[1])(pushRng_); };
+  if(t >= nextPushTime_)
+  {
+    const double angle = std::uniform_real_distribution<double>(-M_PI, M_PI)(pushRng_);
+    const double force = uniform(pushForce_);
+    pushForceVec_ << force * std::cos(angle), force * std::sin(angle), 0.0;
+    pushEndTime_ = t + uniform(pushDuration_);
+    nextPushTime_ = pushEndTime_ + uniform(pushInterval_);
+  }
+  if(t < pushEndTime_)
+  {
+    const auto call = robot().name() + "::ApplyForcesOnBody";
+    if(datastore().has(call))
+    {
+      datastore().call<bool, const std::string &, const sva::ForceVecd &, const Eigen::Vector3d>(
+          call, pushBody_, sva::ForceVecd(Eigen::Vector3d::Zero(), pushForceVec_), Eigen::Vector3d::Zero());
+    }
+  }
+  else { pushForceVec_.setZero(); }
+}
+
 void G1RLQPController::updateAccelerationDiagnostics()
 {
   const auto & mb = robot().mb();
@@ -809,6 +874,8 @@ void G1RLQPController::addLog()
   logger().addLogEntry("G1RLQPController_qddQP", [this]() { return qddQP_; });
   logger().addLogEntry("G1RLQPController_alphaReal", [this]() { return alphaReal_; });
   logger().addLogEntry("G1RLQPController_qddBaseID", [this]() { return qddBaseID_; });
+  logger().addLogEntry("G1RLQPController_velCmd", [this]() { return currentVelCmd; });
+  logger().addLogEntry("G1RLQPController_pushForce", [this]() { return pushForceVec_; });
 
   logger().addLogEntry(
       "G1RLQPController_RL_currentObservation",

@@ -7,6 +7,7 @@
 #include <Eigen/Core>
 
 #include <array>
+#include <random>
 #include <map>
 #include <memory>
 #include <string>
@@ -261,6 +262,24 @@ struct G1RLQPController_DLLAPI G1RLQPController : public mc_control::fsm::Contro
   Eigen::VectorXd alphaReal_;
   Eigen::VectorXd qddBaseID_ = Eigen::VectorXd::Zero(6);
   void updateAccelerationDiagnostics();
+
+  // Sim-to-sim test harness (config block sim_test, absent = off). Times count from
+  // entering acceleration mode.
+  //   command_schedule: [[t, vx, vy, wz], ...]   velocity command from t on
+  //   pushes: {body, force: [min, max] N, duration: [min, max] s, interval: [min, max] s, seed}
+  //           horizontal force in a random direction, applied through mc_mujoco's
+  //           <robot>::ApplyForcesOnBody (one control step per call)
+  bool simTestEnabled_ = false;
+  double simTestTime_ = 0.0;
+  std::vector<std::array<double, 4>> commandSchedule_;
+  bool pushesEnabled_ = false;
+  std::string pushBody_ = "pelvis";
+  std::array<double, 2> pushForce_{0.0, 0.0}, pushDuration_{0.1, 0.1}, pushInterval_{2.0, 2.0};
+  std::mt19937 pushRng_;
+  double nextPushTime_ = 0.0, pushEndTime_ = -1.0;
+  Eigen::Vector3d pushForceVec_ = Eigen::Vector3d::Zero();
+  void loadSimTest();
+  void updateSimTest();
 
   // Commande [vx, vy, yaw_rate] donnée à la policy.
   Eigen::Vector3d currentVelCmd = Eigen::Vector3d::Zero();

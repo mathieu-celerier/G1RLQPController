@@ -3,6 +3,7 @@ r=list(csv.DictReader(open(sys.argv[1]),delimiter=';'))
 T=np.array([float(d['t']) for d in r]); z=np.array([float(d['FloatingBase_position_z']) for d in r])
 x=np.array([float(d['FloatingBase_position_x']) for d in r]); y=np.array([float(d['FloatingBase_position_y']) for d in r])
 q=np.array([[float(d['FloatingBase_orientation_'+c]) for c in 'wxyz'] for d in r])
+q[:,1:]*=-1  # mc_rtc logs the world-to-body (sva) orientation: conjugate it
 yaw=np.unwrap(np.arctan2(2*(q[:,0]*q[:,3]+q[:,1]*q[:,2]),1-2*(q[:,2]**2+q[:,3]**2)))
 fall=T[np.argmax(z<0.5)] if (z<0.5).any() else None
 end=fall if fall else T[-1]; m=(T>2)&(T<min(end-1,20))

@@ -36,3 +36,8 @@ mc_mujoco -f $G1_WS/run/mc_rtc.yaml --without-visualization --without-mc-rtc-gui
   and how often the QP overrides the ankle-pitch reference; `tools/acc_diag.py` compares policy q̈,
   QP output (`alphaDOut`, `ffOut_acceleration`), measured q̈ and the zero-base-torque base acceleration.
 - `joint_limit_cbf: {zeta, lambda, ds_percent}` in the controller config overrides the Acc-CBF gains.
+- `sim_test:` block (see `G1RLQPController.h`): timed velocity-command schedule and random horizontal
+  pushes through mc_mujoco's `<robot>::ApplyForcesOnBody`. `tools/run_test.sh NAME tests/<file>.yaml [wall s]`
+  runs one and prints per-segment tracking, pushes and falls; `tools/fall_rate.py *_test.csv` pools seeds.
+- **The logged `FloatingBase_orientation` is world-to-body (sva convention)**: conjugate it before
+  extracting yaw (the scripts here do).

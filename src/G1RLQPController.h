@@ -254,6 +254,14 @@ struct G1RLQPController_DLLAPI G1RLQPController : public mc_control::fsm::Contro
   /** Compute qaccExt[0] from the external torques estimated by ExternalForcesObserver. */
   Eigen::VectorXd computeQaccExt();
 
+  // Diagnostics (mc_rtc dof order, base = [angular; linear] in base frame):
+  // QP solution, measured velocity, and the base acceleration MJLab's JointAccelerationAction
+  // would use for the same joint reference (zero base torque with tau_ext compensation).
+  Eigen::VectorXd qddQP_;
+  Eigen::VectorXd alphaReal_;
+  Eigen::VectorXd qddBaseID_ = Eigen::VectorXd::Zero(6);
+  void updateAccelerationDiagnostics();
+
   // Commande [vx, vy, yaw_rate] donnée à la policy.
   Eigen::Vector3d currentVelCmd = Eigen::Vector3d::Zero();
 

@@ -17,6 +17,16 @@ G1RLQPController::G1RLQPController(mc_rbdyn::RobotModulePtr rm, double dt, const
   currentPolicyIndex = positionPolicyIndex_;
 
   // Initialize Constraints
+  // Acc-CBF joint-limit gains (defaults in the header), overridable for sim-to-sim tests.
+  if(config_.has("joint_limit_cbf"))
+  {
+    const auto cbf = config_("joint_limit_cbf");
+    cbf("zeta", zeta_jointLimit_);
+    cbf("lambda", lambda_jointLimit_);
+    cbf("ds_percent", dsPercent_);
+    mc_rtc::log::info("[G1RLQPController] joint-limit CBF: zeta={}, lambda={}, ds={}", zeta_jointLimit_,
+                      lambda_jointLimit_, dsPercent_);
+  }
   // selfCollisionConstraint->setCollisionsDampers(solver(), {zeta_selfCollision_, lambda_selfCollision_});
   solver().removeConstraintSet(dynamicsConstraint);
   dynamicsConstraint = mc_rtc::unique_ptr<mc_solver::DynamicsConstraint>(new mc_solver::DynamicsConstraint(
@@ -59,6 +69,8 @@ bool G1RLQPController::run()
   {
     return true;
   }
+
+  updateAccelerationDiagnostics();
 
   if(datastore().has("Joystick::connected") && datastore().get<bool>("Joystick::connected"))
   {
@@ -624,6 +636,30 @@ if(++baseVelocityDebugCounter >= 400)
   if(observeQaccExt_) { qaccExt[0] = computeQaccExt(); }
 }
 
+void G1RLQPController::updateAccelerationDiagnostics()
+{
+  const auto & mb = robot().mb();
+  // QP output: the solver result is on outputRobot() (logged by mc_rtc as alphaDOut / ffOut_acceleration).
+  qddQP_ = rbd::dofToVector(outputRobot().mb(), outputRobot().mbc().alphaD);
+
+  auto & real_robot = realRobot(robot().name());
+  alphaReal_ = rbd::dofToVector(real_robot.mb(), real_robot.mbc().alpha);
+
+  if(rlmode != ACCELERATION || qddRefFull_.size() != mb.nrDof()) { return; }
+
+  rbd::ForwardDynamics fd(real_robot.mb());
+  fd.computeH(real_robot.mb(), real_robot.mbc());
+  fd.computeC(real_robot.mb(), real_robot.mbc());
+  const Eigen::MatrixXd & H = fd.H();
+  Eigen::VectorXd tauExt = real_robot.externalTorques();
+  if(tauExt.size() != mb.nrDof()) { tauExt = Eigen::VectorXd::Zero(mb.nrDof()); }
+
+  const Eigen::Index nj = mb.nrDof() - 6;
+  const Eigen::VectorXd rhs =
+      H.block(0, 6, 6, nj) * qddRefFull_.tail(nj) + fd.C().head<6>() - tauExt.head<6>();
+  qddBaseID_ = -H.topLeftCorner<6, 6>().ldlt().solve(rhs);
+}
+
 Eigen::VectorXd G1RLQPController::computeQaccExt()
 {
   auto & real_robot = realRobot(robot().name());
@@ -770,6 +806,10 @@ bool G1RLQPController::byPassQPControl()
 
 void G1RLQPController::addLog()
 {
+  logger().addLogEntry("G1RLQPController_qddQP", [this]() { return qddQP_; });
+  logger().addLogEntry("G1RLQPController_alphaReal", [this]() { return alphaReal_; });
+  logger().addLogEntry("G1RLQPController_qddBaseID", [this]() { return qddBaseID_; });
+
   logger().addLogEntry(
       "G1RLQPController_RL_currentObservation",
       [this]()

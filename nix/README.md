@@ -23,3 +23,16 @@ mc_mujoco -f $G1_WS/run/mc_rtc.yaml --without-visualization --without-mc-rtc-gui
   `RobotModulePaths` to the mc-g1 store path, `nix eval --raw ./nix#packages.x86_64-linux.mc-g1.outPath`).
 - `G1RLQPController.user.yaml`: copy to `~/.config/mc_rtc/controllers/G1RLQPController.yaml`
   (policy paths on this machine; `acceleration_policy_index: 2` selects ArmWrenchRamp model_14999).
+
+## Sim-to-sim matching (2026-10-20)
+
+- `g1_mj_description`'s `g1_29dof.xml` runs at 1 ms RK4, so mc_mujoco uses `Frameskip = round(2.5/1) = 3`:
+  the physics advances 3 ms per 2.5 ms control step. Use 2.5 ms implicitfast (training's) instead.
+- `tools/make_matched_g1_model.py SRC OUT --parts feet,joints,masses` (run in the mjlab venv) writes a
+  copy matched to the mjlab training model (timestep always; mjlab foot capsules/friction 0.6, per-joint
+  armature, no damping/frictionloss, mjlab masses/inertias). `--parts ""` = timestep only.
+  Select it with `mc_mujoco.g1_29dof.user.yaml` → `~/.config/mc_rtc/mc_mujoco/g1_29dof.yaml`.
+- `tools/run_case.sh NAME [extra controller yaml]` runs headless and prints speed, yaw drift, fall time
+  and how often the QP overrides the ankle-pitch reference; `tools/acc_diag.py` compares policy q̈,
+  QP output (`alphaDOut`, `ffOut_acceleration`), measured q̈ and the zero-base-torque base acceleration.
+- `joint_limit_cbf: {zeta, lambda, ds_percent}` in the controller config overrides the Acc-CBF gains.

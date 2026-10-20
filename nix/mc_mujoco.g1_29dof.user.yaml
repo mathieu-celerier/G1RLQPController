@@ -1,0 +1,2 @@
+xmlModelPath: "/home/jrl-admin/devel/mc_rtc_nix_ws/install/share/mc_mujoco/g1/xml/g1_29dof_mjlab.xml"
+pdGainsPath: "/home/jrl-admin/devel/mc_rtc_nix_ws/install/share/mc_mujoco/g1/pdgains/g1_29dof/PDgains_sim.dat"

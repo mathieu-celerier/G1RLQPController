@@ -1,0 +1,76 @@
+diff --git a/urdf/g1_29dof.urdf b/urdf/g1_29dof.urdf
+index 44e73ba..4d75e13 100644
+--- a/urdf/g1_29dof.urdf
++++ b/urdf/g1_29dof.urdf
+@@ -109,7 +109,7 @@
+     <parent link="left_hip_pitch_link"/>
+     <child link="left_hip_roll_link"/>
+     <axis xyz="1 0 0"/>
+-    <limit lower="-0.5236" upper="2.9671" effort="88" velocity="32"/>
++    <limit lower="-0.5236" upper="2.9671" effort="139" velocity="32"/>
+   </joint>
+   <link name="left_hip_yaw_link">
+     <inertial>
+@@ -190,7 +190,7 @@
+     <parent link="left_knee_link"/>
+     <child link="left_ankle_pitch_link"/>
+     <axis xyz="0 1 0"/>
+-    <limit lower="-0.87267" upper="0.5236" effort="35" velocity="30"/>
++    <limit lower="-0.87267" upper="0.5236" effort="50" velocity="30"/>
+   </joint>
+   <link name="left_ankle_roll_link">
+     <inertial>
+@@ -235,7 +235,7 @@
+     <parent link="left_ankle_pitch_link"/>
+     <child link="left_ankle_roll_link"/>
+     <axis xyz="1 0 0"/>
+-    <limit lower="-0.2618" upper="0.2618" effort="35" velocity="30"/>
++    <limit lower="-0.2618" upper="0.2618" effort="50" velocity="30"/>
+   </joint>
+   <link name="right_hip_pitch_link">
+     <inertial>
+@@ -289,7 +289,7 @@
+     <parent link="right_hip_pitch_link"/>
+     <child link="right_hip_roll_link"/>
+     <axis xyz="1 0 0"/>
+-    <limit lower="-2.9671" upper="0.5236" effort="88" velocity="32"/>
++    <limit lower="-2.9671" upper="0.5236" effort="139" velocity="32"/>
+   </joint>
+   <link name="right_hip_yaw_link">
+     <inertial>
+@@ -370,7 +370,7 @@
+     <parent link="right_knee_link"/>
+     <child link="right_ankle_pitch_link"/>
+     <axis xyz="0 1 0"/>
+-    <limit lower="-0.87267" upper="0.5236" effort="35" velocity="30"/>
++    <limit lower="-0.87267" upper="0.5236" effort="50" velocity="30"/>
+   </joint>
+   <link name="right_ankle_roll_link">
+     <inertial>
+@@ -415,7 +415,7 @@
+     <parent link="right_ankle_pitch_link"/>
+     <child link="right_ankle_roll_link"/>
+     <axis xyz="1 0 0"/>
+-    <limit lower="-0.2618" upper="0.2618" effort="35" velocity="30"/>
++    <limit lower="-0.2618" upper="0.2618" effort="50" velocity="30"/>
+   </joint>
+ 
+   <!-- Torso -->
+@@ -459,7 +459,7 @@
+     <parent link="waist_yaw_link"/>
+     <child link="waist_roll_link"/>
+     <axis xyz="1 0 0"/>
+-    <limit lower="-0.52" upper="0.52" effort="35" velocity="30"/>
++    <limit lower="-0.52" upper="0.52" effort="50" velocity="30"/>
+   </joint>
+   <link name="torso_link">
+     <inertial>
+@@ -486,7 +486,7 @@
+     <parent link="waist_roll_link"/>
+     <child link="torso_link"/>
+     <axis xyz="0 1 0"/>
+-    <limit lower="-0.52" upper="0.52" effort="35" velocity="30"/>
++    <limit lower="-0.52" upper="0.52" effort="50" velocity="30"/>
+   </joint>
+ 
+   <!-- LOGO -->

@@ -1,0 +1,5 @@
+MainRobot: G1_29dof
+Enabled: [G1RLQPController]
+#Enabled: Posture
+Timestep: 0.0025
+LogPolicy: threaded

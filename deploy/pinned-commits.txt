@@ -1,0 +1,42 @@
+# Repositories of Raphaël Barrabes's mc_rtc workspace, recorded 2026-10-20 on mathieu-omen
+# Workspace: ~/devel/mjlab_acceleration_policies_raphael_barrabes/mc_rtc_workspace_raphael_barrabes
+# Format: path | commit | origin | state
+# 'dirty' = uncommitted tracked changes, saved as deploy/<name>-local.patch (apply with git apply on that commit).
+# Untracked build/ dirs and symlinks to Raphaël's build tree are ignored everywhere.
+
+src/Eigen3ToPython | d073a175ab637a4b88e63c9d3e19e07e6e01c7e5 | https://github.com/jrl-umi3218/Eigen3ToPython | clean on master
+src/eigen-qld | ebdf5d6246c671b7a55fb4b678551c495164e694 | https://github.com/jrl-umi3218/eigen-qld | clean on master
+src/eigen-quadprog | 2da94c5d2a44d0db75b7a2eddd4bc547939d229f | https://github.com/jrl-umi3218/eigen-quadprog | clean on master
+src/g1_mj_description | 5a013e002be82220fd708b184ac8c108c5e35732 | https://github.com/Noceo200/g1_mj_description | DIRTY on main: xml/g1_29dof.xml -> deploy/g1_mj_description-local.patch
+src/G1RLQPController | b2b7d5446e03826b8f08dc33b230afbb46c78e18 | https://github.com/RaphaelBarrabes/new-rl-qp-controller | clean on topic/acceleration-live-2026-08-13 (live tree committed; base 5a9753f; pushed to git@github.com:mathieu-celerier/new-rl-qp-controller.git)
+src/geos-cpp-inline | aeed4e041b1d5259f260f80c7f3610e631a1dfa8 | https://github.com/isri-aist/geos-cpp-inline-deb | clean on main
+src/gram_savitzky_golay | 3f767e3ca366677ed189c33ee14a86cc6e9b34a6 | https://github.com/jrl-umi3218/gram_savitzky_golay | clean on master
+src/lexls | f13b6b668146aabbf838b1e2fc3fe9b65d752db5 | https://github.com/jrl-umi3218/lexls | clean on master
+src/mc_external_forces_observer | 037de67544ed1a5b37e702c48bce28a6da284986 | https://github.com/isri-aist/mc_external_forces_observer | DIRTY on main: src/ExternalForcesObserver.cpp src/ExternalForcesObserver.h -> deploy/mc_external_forces_observer-local.patch
+src/mc_g1 | 7e35e3fc0e3e0d9e2edbabbac2c5ca7b79e93bac | https://github.com/isri-aist/mc_g1 | DIRTY on main: src/g1.cpp -> deploy/mc_g1-local.patch
+src/mc_joystick_plugin | 2a9dfb2ae58c3013a182c3c9807bf3c9a46da84f | https://github.com/bastien-muraccioli/mc_joystick_plugin | clean on main
+src/mc_mujoco | 5b75a4cc24621831cdf80830e64b00b3cb073048 | https://github.com/bastien-muraccioli/mc_mujoco | DIRTY on main: src/mj_sim_impl.h -> deploy/mc_mujoco-local.patch
+src/mc_rtc | 9aae9c4745eec409572eb631aa3fbce17e5cdde2 | https://github.com/bastien-muraccioli/mc_rtc | DIRTY on master: src/mc_solver/DynamicsConstraint.cpp -> deploy/mc_rtc-local.patch
+src/mc_rtc_ros_compat | d294d5d7a7526db1c2d5ab4605569255dc3a459e | https://github.com/jrl-umi3218/mc_rtc_ros_compat | clean on main
+src/mc_state_observation | e438b9e0dbd25a20bbc39fcf00bfb8c963e19bec | https://github.com/bastien-muraccioli/mc_state_observation | clean on main
+src/mesh-sampling | 554bbc283d23c81854937955655674ebd3b7f225 | https://github.com/jrl-umi3218/mesh_sampling | clean on master
+src/ndcurves | 7f91c9f84ddeca267ce9d80ec51a1737be6d1c5f | https://github.com/loco-3d/ndcurves | clean on detached
+src/RBDyn | a49b383e3fbc57168c7238fd93155c409b6046f5 | https://github.com/jrl-umi3218/RBDyn | clean on master
+src/rl_controller | d00b5ecea2b6b626c0409232f7262b34cd00c498 | https://github.com/bastien-muraccioli/rl_controller | clean on main
+src/sch-core | a04cd4ee0fbc3a799ad3c0e9a8cf8629b3eb9d62 | https://github.com/jrl-umi3218/sch-core | clean on master
+src/sch-core-python | abf731067fa45cacaef7c4a79b395a24f8127d1f | https://github.com/jrl-umi3218/sch-core-python | clean on master
+src/SpaceVecAlg | bbe75c7fd4912834b311dfabe022d95f17eb409c | https://github.com/jrl-umi3218/SpaceVecAlg | clean on master
+src/state-observation | 1b319a1e727022f28d2f82c1535c3d9f9207e608 | https://github.com/bastien-muraccioli/state-observation | clean on master
+src/Tasks | 827e136322da3e2f1d9c28141b00fe43a9f35a4a | https://github.com/bastien-muraccioli/Tasks | clean on master
+src/tvm | 62aacd80d49a11e2d56dd3a7dcf712340f7f6b68 | https://github.com/bastien-muraccioli/tvm | clean on master
+src/catkin_ws/src/mc_rtc_ros | 7e130cb94721738520a29c0d96140fc4d2324fec | https://github.com/jrl-umi3218/mc_rtc_ros | clean on master
+src/catkin_data_ws/src/g1_description | e4fa30ffcd239fe405ec3942a58b554131598615 | https://github.com/isri-aist/g1_description | DIRTY on main: urdf/g1_29dof.urdf -> deploy/g1_description-local.patch
+src/catkin_data_ws/src/mc_rtc_data | 3f13055e7abfdd97e5ec597057b3c681a18d429e | https://github.com/jrl-umi3218/mc_rtc_data | clean on master
+src/catkin_data_ws/src/mc_rtc_msgs | 93ae1865ccef05caeed61039a90492664ccb7cfe | https://github.com/jrl-umi3218/mc_rtc_msgs | clean on master
+safe-rl-qp-mc-rtc-superbuild | 55b14d313e45b97ab2134ee7ddaace6406eaa46b | git@github.com:RaphaelBarrabes/safe-rl-qp-mc-rtc-superbuild.git | clean on topic/g1-live (robots/G1.cmake committed; base 0841ab6; pushed to git@github.com:mathieu-celerier/safe-rl-qp-mc-rtc-superbuild.git); untracked logControl.csv (375 MB) not kept
+new-rl-qp-controller | 6da19807964b8b21c3c2f1a5448cc71689ad4a8b | git@github.com:RaphaelBarrabes/new-rl-qp-controller.git | DIRTY on main: .gitignore adds "build-local/" (only change; no patch)
+
+# Note: new-rl-qp-controller at the workspace root is an older separate clone (M .gitignore, untracked MUJOCO_LOG.TXT),
+# not used by the build; src/G1RLQPController is the live controller.
+# Note: src/G1RLQPController origin/main is 6da1980 ('add acceleration'), one commit past 5a9753f and not in the live tree.
+# Note: g1_mj_description-local.patch only adds an XML comment (no effect); kept for completeness.

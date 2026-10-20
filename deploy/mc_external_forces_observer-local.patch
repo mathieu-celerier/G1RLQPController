@@ -1,0 +1,218 @@
+diff --git a/src/ExternalForcesObserver.cpp b/src/ExternalForcesObserver.cpp
+index c9cd4b2..e8cb846 100644
+--- a/src/ExternalForcesObserver.cpp
++++ b/src/ExternalForcesObserver.cpp
+@@ -12,6 +12,8 @@
+ 
+ #include <RBDyn/Coriolis.h>
+ 
++#include <cmath>
++
+ namespace mc_external_forces_observer
+ {
+ 
+@@ -46,8 +48,11 @@ void ExternalForcesObserver::configure(const mc_control::MCController & ctl,
+   tau_ext_hat_ = Eigen::VectorXd::Zero(nDof_);
+   tau_momentum_observer_ = Eigen::VectorXd::Zero(nDof_);
+   tau_ext_ft_sensor_ = Eigen::VectorXd::Zero(nDof_);
++  tau_ext_simulator_raw_ = Eigen::VectorXd::Zero(nDof_);
++  tau_ext_simulator_filtered_ = Eigen::VectorXd::Zero(nDof_);
+   integralTerm_ = Eigen::VectorXd::Zero(nDof_);
+   resetObserver_ = true;
++  resetSimulatorFilter_ = true;
+ 
+   auto & realRobot = ctl.realRobot(robot_);
+   const auto & forceSensors = realRobot.forceSensors();
+@@ -66,6 +71,7 @@ void ExternalForcesObserver::reset(const mc_control::MCController & /* ctl */)
+ {
+   mc_rtc::log::info("[ExternalForcesObserver][Reset] called");
+   resetObserver_ = true;
++  resetSimulatorFilter_ = true;
+ }
+ 
+ bool ExternalForcesObserver::run(const mc_control::MCController & ctl)
+@@ -85,6 +91,10 @@ bool ExternalForcesObserver::run(const mc_control::MCController & ctl)
+   {
+     tau_ext_hat_ = forceSensorBasedEstimation(ctl);
+   }
++  else if(estimation_method_ == EstimationMethod::SimulatorGroundTruth)
++  {
++    tau_ext_hat_ = simulatorGroundTruth(ctl);
++  }
+   else
+   {
+     mc_rtc::log::error_and_throw<std::runtime_error>("[ExternalForcesObserver] Invalid estimation method.");
+@@ -236,6 +246,39 @@ Eigen::VectorXd ExternalForcesObserver::momentumObserver(const mc_control::MCCon
+   return  tau_ext_ft_sensor_ + tau_momentum_observer_;
+ }
+ 
++Eigen::VectorXd ExternalForcesObserver::simulatorGroundTruth(const mc_control::MCController & ctl)
++{
++  // mc_mujoco writes qfrc_constraint + qfrc_passive to realRobot immediately
++  // before the observer pipeline runs.
++  const auto & raw = ctl.realRobot(robot_).externalTorques();
++
++  if(raw.size() != nDof_)
++  {
++    mc_rtc::log::error_and_throw<std::runtime_error>(
++        "[ExternalForcesObserver] Simulator external torque has size {}, expected {}. "
++        "Enable external torques in mc_mujoco.",
++        raw.size(),
++        nDof_);
++  }
++
++  tau_ext_simulator_raw_ = raw;
++
++  if(resetSimulatorFilter_)
++  {
++    // Match the zero initial state used by the training low-pass filter.
++    tau_ext_simulator_filtered_.setZero();
++    resetSimulatorFilter_ = false;
++  }
++
++  constexpr double pi = 3.14159265358979323846;
++  const double alpha = std::exp(-2.0 * pi * simulatorFilterCutoffHz_ * dt());
++
++  tau_ext_simulator_filtered_ = alpha * tau_ext_simulator_filtered_
++                                + (1.0 - alpha) * tau_ext_simulator_raw_;
++
++  return tau_ext_simulator_filtered_;
++}
++
+ Eigen::VectorXd ExternalForcesObserver::forceSensorBasedEstimation(const mc_control::MCController & ctl)
+ {
+   auto & realRobot = ctl.realRobot(robot_);
+@@ -292,6 +335,13 @@ void ExternalForcesObserver::loadConfig(const mc_rtc::Configuration & config)
+   estimation_method_ = toEstimationMethod(config("estimation_method", std::string("MomentumObserver")));
+   useFTSensorMeasurements_ = config("use_forces_from_ft_sensors", true);
+   isActive_ = config("is_active", true);
++  simulatorFilterCutoffHz_ = config("simulator_filter_cutoff_hz", 5.0);
++  if(!std::isfinite(simulatorFilterCutoffHz_) || simulatorFilterCutoffHz_ <= 0.0)
++  {
++    mc_rtc::log::error_and_throw<std::runtime_error>(
++        "[ExternalForcesObserver] simulator_filter_cutoff_hz must be finite and positive, got {}",
++        simulatorFilterCutoffHz_);
++  }
+ }
+ 
+ void ExternalForcesObserver::addToGUI(const mc_control::MCController & ctl,
+@@ -329,8 +379,20 @@ void ExternalForcesObserver::addToGUI(const mc_control::MCController & ctl,
+       [this](const std::string & v)
+       {
+         resetObserver_ = true;
++        resetSimulatorFilter_ = true;
+         estimation_method_ = toEstimationMethod(v);
+       }),
++      mc_rtc::gui::NumberInput(
++      "Simulator filter cutoff [Hz]",
++      [this]() { return simulatorFilterCutoffHz_; },
++      [this](double cutoff)
++      {
++        if(std::isfinite(cutoff) && cutoff > 0.0)
++        {
++          simulatorFilterCutoffHz_ = cutoff;
++          resetSimulatorFilter_ = true;
++        }
++      }),
+       mc_rtc::gui::ComboInput(
+       "Torque measurement source",
+       std::vector<std::string>(
+@@ -367,6 +429,10 @@ void ExternalForcesObserver::addToLogger(const mc_control::MCController & /* ctl
+     logger.addLogEntry(category + "_tauMomentumObserver_" + dofNames_[i], this, [this, i]() { return tau_momentum_observer_(i); });
+     logger.addLogEntry(category + "_integralTerm_" + dofNames_[i], this, [this, i]() { return integralTerm_(i); });
+     logger.addLogEntry(category + "_tauExtFtSensor_" + dofNames_[i], this, [this, i]() { return tau_ext_ft_sensor_(i); });
++    logger.addLogEntry(category + "_tauExtSimulatorRaw_" + dofNames_[i], this,
++                       [this, i]() { return tau_ext_simulator_raw_(i); });
++    logger.addLogEntry(category + "_tauExtSimulatorFiltered_" + dofNames_[i], this,
++                       [this, i]() { return tau_ext_simulator_filtered_(i); });
+   }
+ }
+ 
+@@ -472,4 +538,4 @@ std::vector<std::string> ExternalForcesObserver::refDofOrder(const rbd::MultiBod
+ 
+ } // namespace mc_external_forces_observer
+ 
+-EXPORT_OBSERVER_MODULE("ExternalForcesObserver", mc_external_forces_observer::ExternalForcesObserver)
+\ No newline at end of file
++EXPORT_OBSERVER_MODULE("ExternalForcesObserver", mc_external_forces_observer::ExternalForcesObserver)
+diff --git a/src/ExternalForcesObserver.h b/src/ExternalForcesObserver.h
+index d2ee0d9..1175c91 100644
+--- a/src/ExternalForcesObserver.h
++++ b/src/ExternalForcesObserver.h
+@@ -50,11 +50,16 @@ enum class TorqueSourceType
+  *                     The gain-related latency applies only to unmeasured
+  *                     forces; forces captured by sensors pass through at full
+  *                     bandwidth.
++ *
++ * - SimulatorGroundTruth: Uses the generalized external torques supplied by
++ *                         the simulator and applies a configurable first-order
++ *                         low-pass filter.
+  */
+ enum class EstimationMethod
+ {
+   MomentumObserver,
+   ForceSensorBased,
++  SimulatorGroundTruth,
+ };
+ 
+ namespace mc_external_forces_observer
+@@ -131,10 +136,11 @@ private:
+     "JointTorqueMeasurement"
+   };
+ 
+-  static constexpr std::array<const char *, 2> estimationMethodNames =
++  static constexpr std::array<const char *, 3> estimationMethodNames =
+   {
+     "MomentumObserver",
+-    "ForceSensorBased"
++    "ForceSensorBased",
++    "SimulatorGroundTruth"
+   };
+ 
+   static std::string toString(TorqueSourceType src);
+@@ -164,6 +170,15 @@ private:
+    */
+   Eigen::VectorXd momentumObserver(const mc_control::MCController & ctl);
+ 
++  /**
++   * @brief Low-pass filter the generalized external torques supplied by the
++   * simulator.
++   *
++   * In mc_mujoco the raw input is qfrc_constraint + qfrc_passive, mapped to
++   * the RBDyn DoF ordering before the observer pipeline runs.
++   */
++  Eigen::VectorXd simulatorGroundTruth(const mc_control::MCController & ctl);
++
+   /**
+    * @brief Force-sensor based external torque estimation.
+    *
+@@ -185,6 +200,7 @@ private:
+   TorqueSourceType tau_mes_src_;   ///< Torque source used by the momentum observer.
+   EstimationMethod estimation_method_; ///< Active estimation algorithm.
+   double residualGain_;            ///< Observer gain K.
++  double simulatorFilterCutoffHz_ = 5.0; ///< Simulator-torque low-pass cutoff frequency.
+ 
+   // ── Runtime state ───────────────────────────────────────────────────────────
+ 
+@@ -208,6 +224,14 @@ private:
+ 
+   /// Force-sensor torque projection: Σ J_s^T · R^T · F_s.
+   Eigen::VectorXd tau_ext_ft_sensor_;
++
++  /// Raw generalized external torque supplied by the simulator.
++  Eigen::VectorXd tau_ext_simulator_raw_;
++
++  /// Filtered generalized external torque supplied to the QP.
++  Eigen::VectorXd tau_ext_simulator_filtered_;
++
++  bool resetSimulatorFilter_ = true;
+   
+   bool observerInitialized_ = false; ///< Whether the momentum observer has been initialised with a valid p0.
+ 
+@@ -237,4 +261,4 @@ private:
+   std::vector<std::string> refDofOrder(const rbd::MultiBodyConfig & mbc, const rbd::MultiBody & mb);
+ };
+ 
+-} // namespace mc_external_forces_observer
+\ No newline at end of file
++} // namespace mc_external_forces_observer

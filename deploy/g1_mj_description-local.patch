@@ -1,0 +1,22 @@
+diff --git a/xml/g1_29dof.xml b/xml/g1_29dof.xml
+index e763f61..5357715 100644
+--- a/xml/g1_29dof.xml
++++ b/xml/g1_29dof.xml
+@@ -1,6 +1,17 @@
+ <mujoco model="g1_29dof">
+   <compiler angle="radian" meshdir="../meshes" />
+   <option timestep="0.001" integrator="RK4" iterations="10" ls_iterations="10">
++  <!-- <option timestep="0.0025"
++        integrator="implicitfast"
++        impratio="1"
++        cone="pyramidal"
++        jacobian="auto"
++        solver="Newton"
++        iterations="10"
++        tolerance="1e-8"
++        ls_iterations="20"
++        ls_tolerance="0.01"
++        ccd_iterations="50"> -->
+     <flag eulerdamp="enable"/>
+   </option>
+ 

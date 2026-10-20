@@ -1,0 +1,27 @@
+diff --git a/src/mc_solver/DynamicsConstraint.cpp b/src/mc_solver/DynamicsConstraint.cpp
+index 83607d03..6daed705 100644
+--- a/src/mc_solver/DynamicsConstraint.cpp
++++ b/src/mc_solver/DynamicsConstraint.cpp
+@@ -215,14 +215,14 @@ void DynamicsConstraint::addToSolverImpl(QPSolver & solver)
+       auto tl_lim = tvm_robot.limits().tl;
+       auto tu_lim = tvm_robot.limits().tu;
+ 
+-      if(!activateConstraints_)
+-      {
+-        // Keep 0 at the floating base and set the joint limits to infinity to effectively disable the constraints
+-        tl_lim.head(tvm_robot.qFloatingBase()->size()).setZero();
+-        tu_lim.head(tvm_robot.qFloatingBase()->size()).setZero();
+-        tl_lim.tail(tvm_robot.qJoints()->size()).setConstant(-INFINITY);
+-        tu_lim.tail(tvm_robot.qJoints()->size()).setConstant(INFINITY);
+-      }
++      // if(!activateConstraints_)
++      // {
++      //   // Keep 0 at the floating base and set the joint limits to infinity to effectively disable the constraints
++      //   tl_lim.head(tvm_robot.qFloatingBase()->size()).setZero();
++      //   tu_lim.head(tvm_robot.qFloatingBase()->size()).setZero();
++      //   tl_lim.tail(tvm_robot.qJoints()->size()).setConstant(-INFINITY);
++      //   tu_lim.tail(tvm_robot.qJoints()->size()).setConstant(INFINITY);
++      // }
+ 
+       auto tL = problem.add(tl_lim <= tvm_robot.tau() <= tu_lim, tvm::task_dynamics::None(),
+                             {tvm::requirements::PriorityLevel(0)});

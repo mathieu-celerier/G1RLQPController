@@ -243,6 +243,17 @@ struct G1RLQPController_DLLAPI G1RLQPController : public mc_control::fsm::Contro
 
   std::array<Eigen::Vector3d, HISTORY_SIZE> velCmd;
 
+  // qacc_ext = M(q)^-1 tau_ext (35 values), observed by the ExtAcc policies (2026-10-20).
+  // MJLab/MuJoCo generalized coordinates: base linear (world frame), base angular (base
+  // frame), then the joints in refJointOrderRLAction order.
+  std::array<Eigen::VectorXd, HISTORY_SIZE> qaccExt;
+
+  // Set per policy by qacc_ext_observation; appends qaccExt after velCmd in the observation.
+  bool observeQaccExt_ = false;
+
+  /** Compute qaccExt[0] from the external torques estimated by ExternalForcesObserver. */
+  Eigen::VectorXd computeQaccExt();
+
   // Commande [vx, vy, yaw_rate] donnée à la policy.
   Eigen::Vector3d currentVelCmd = Eigen::Vector3d::Zero();
 

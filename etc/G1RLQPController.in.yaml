@@ -375,3 +375,45 @@ policies:
     acceleration_limit: 900.0
     velocity_command: [0.4, 0.0, 0.0]
     # action_scale defaults to the common 30 rad/s^2 map above.
+
+  # TrackGated-ExtAcc-ArmWrenchRamp model_14999 (mjlab, rl-tower, 2026-10-20): 670 inputs =
+  # the seven terms above plus qacc_ext = M^-1 tau_ext (35 values, 5 Hz filtered, history 5).
+  # Select it with policy_path[2] and acceleration_policy_index: 2.
+  - action_mode: acceleration
+    use_QP: true
+    posture_weight: 10.0
+    acceleration_action_ratio: 1.0
+    acceleration_limit: 900.0
+    velocity_command: [0.5, 0.0, 0.0]
+    qacc_ext_observation: true
+    # Exact scale of the MJLab JointAccelerationActionCfg of this run (params/env.yaml).
+    action_scale:
+      left_hip_pitch_joint: 30.0
+      left_hip_roll_joint: 25.0
+      left_hip_yaw_joint: 15.0
+      left_knee_joint: 45.0
+      left_ankle_pitch_joint: 20.0
+      left_ankle_roll_joint: 12.0
+      right_hip_pitch_joint: 30.0
+      right_hip_roll_joint: 25.0
+      right_hip_yaw_joint: 15.0
+      right_knee_joint: 45.0
+      right_ankle_pitch_joint: 20.0
+      right_ankle_roll_joint: 12.0
+      waist_yaw_joint: 15.0
+      waist_roll_joint: 10.0
+      waist_pitch_joint: 10.0
+      left_shoulder_pitch_joint: 8.0
+      left_shoulder_roll_joint: 6.0
+      left_shoulder_yaw_joint: 4.0
+      left_elbow_joint: 6.0
+      left_wrist_roll_joint: 2.0
+      left_wrist_pitch_joint: 1.0
+      left_wrist_yaw_joint: 1.0
+      right_shoulder_pitch_joint: 8.0
+      right_shoulder_roll_joint: 6.0
+      right_shoulder_yaw_joint: 4.0
+      right_elbow_joint: 6.0
+      right_wrist_roll_joint: 2.0
+      right_wrist_pitch_joint: 1.0
+      right_wrist_yaw_joint: 1.0

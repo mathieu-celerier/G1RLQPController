@@ -185,6 +185,7 @@ Eigen::VectorXd utils::getCurrentObservation(mc_control::fsm::Controller & ctl_)
     ctl.jointVel[i] = ctl.jointVel[i - 1];
     ctl.jointAction[i] = ctl.jointAction[i - 1];
     ctl.velCmd[i] = ctl.velCmd[i - 1];
+    ctl.qaccExt[i] = ctl.qaccExt[i - 1];
   }
 
   // currentAction is still the previous raw action here, as in MJLab.
@@ -198,6 +199,10 @@ Eigen::VectorXd utils::getCurrentObservation(mc_control::fsm::Controller & ctl_)
   for(int i = ctl.HISTORY_SIZE - 1; i >= 0; --i) { appendToObs(ctl.jointVel[i]); }
   for(int i = ctl.HISTORY_SIZE - 1; i >= 0; --i) { appendToObs(ctl.jointAction[i]); }
   for(int i = ctl.HISTORY_SIZE - 1; i >= 0; --i) { appendToObs(ctl.velCmd[i]); }
+  if(ctl.observeQaccExt_)
+  {
+    for(int i = ctl.HISTORY_SIZE - 1; i >= 0; --i) { appendToObs(ctl.qaccExt[i]); }
+  }
 
   if(offset != obs.size())
   {

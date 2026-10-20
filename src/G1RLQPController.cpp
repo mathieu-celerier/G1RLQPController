@@ -1,5 +1,6 @@
 #include "G1RLQPController.h"
 
+#include <RBDyn/FD.h>
 #include <RBDyn/MultiBodyConfig.h>
 #include <algorithm>
 #include <cmath>
@@ -137,6 +138,7 @@ void G1RLQPController::loadPolicyConfiguration(size_t policyIndex)
   const auto policy = config_("policies")[policyIndex];
 
   useQP_ = policy("use_QP", true);
+  observeQaccExt_ = policy("qacc_ext_observation", false);
   pdGainsRatio_ = common("pd_gains_ratio", 1.0);
 
   const std::map<std::string, double> actionScale_map =
@@ -245,6 +247,9 @@ void G1RLQPController::switchPolicy(size_t policyIndex)
 
     jointAction[i] =
         Eigen::VectorXd::Zero(currentAction.size());
+
+    qaccExt[i] =
+        Eigen::VectorXd::Zero(6 + jointObsSize);
   }
 
   currentActionScaled.setZero();
@@ -265,6 +270,7 @@ void G1RLQPController::resetRLHistory()
     jointVel[i] = jointVel[0];
     jointAction[i] = jointAction[0];
     velCmd[i] = velCmd[0];
+    qaccExt[i] = qaccExt[0];
   }
 }
 
@@ -614,6 +620,38 @@ if(++baseVelocityDebugCounter >= 400)
 
   // Commande [vx, vy, yaw_rate].
   velCmd[0] = currentVelCmd;
+
+  if(observeQaccExt_) { qaccExt[0] = computeQaccExt(); }
+}
+
+Eigen::VectorXd G1RLQPController::computeQaccExt()
+{
+  auto & real_robot = realRobot(robot().name());
+  const auto & mb = real_robot.mb();
+  const Eigen::Index nJoints = static_cast<Eigen::Index>(refJointOrderRLAction.size());
+  Eigen::VectorXd out = Eigen::VectorXd::Zero(6 + nJoints);
+
+  // Set by ExternalForcesObserver (update: true), in mc_rtc dof order.
+  const Eigen::VectorXd & tauExt = real_robot.externalTorques();
+  if(tauExt.size() != mb.nrDof()) { return out; }
+
+  // Same mass matrix as the observer (includes the rotor inertia, like MuJoCo's armature).
+  rbd::ForwardDynamics fd(mb);
+  fd.computeH(mb, real_robot.mbc());
+  const Eigen::VectorXd qacc = fd.H().ldlt().solve(tauExt);
+
+  // RBDyn free joint: [angular; linear] both in the base frame.
+  // MuJoCo free joint: [linear in world frame; angular in base frame].
+  const Eigen::Matrix3d R_world_base = real_robot.mbc().bodyPosW[0].rotation().transpose();
+  out.segment<3>(0) = R_world_base * qacc.segment<3>(3);
+  out.segment<3>(3) = qacc.segment<3>(0);
+
+  for(Eigen::Index rlIndex = 0; rlIndex < nJoints; ++rlIndex)
+  {
+    const auto jointIndex = real_robot.jointIndexByName(refJointOrderRLAction[static_cast<size_t>(rlIndex)]);
+    out(6 + rlIndex) = qacc(mb.jointPosInDof(static_cast<int>(jointIndex)));
+  }
+  return out;
 }
 
 // bool G1RLQPController::byPassQPControl()

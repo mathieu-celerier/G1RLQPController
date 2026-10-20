@@ -1,0 +1,6 @@
+# rl-tower overrides for G1RLQPController (merged over install/lib64/mc_controller/etc/G1RLQPController.yaml)
+policy_path:
+  - /home/jrl-admin/devel/mc_rtc_nix_ws/G1RLQPController/policy/policy_pos_08_07.onnx
+  - /home/jrl-admin/devel/mc_rtc_nix_ws/G1RLQPController/policy/policy_acc_08_05.onnx
+  - /home/jrl-admin/devel/mc_rtc_nix_ws/G1RLQPController/policy/policy_acc_arm_wrench_ramp_14999.onnx
+acceleration_policy_index: 2

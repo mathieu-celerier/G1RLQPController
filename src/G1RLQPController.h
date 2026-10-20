@@ -251,6 +251,11 @@ struct G1RLQPController_DLLAPI G1RLQPController : public mc_control::fsm::Contro
 
   // Set per policy by qacc_ext_observation; appends qaccExt after velCmd in the observation.
   bool observeQaccExt_ = false;
+  // sim_test.qacc_ext_gain: scales the qacc_ext observation (0 = ablation), sim tests only.
+  double qaccExtGain_ = 1.0;
+  // sim_test.tau_ext_base_force_world: the base force in externalTorques is in the world frame
+  // (mc_mujoco SimulatorGroundTruth export); rotate it to the base frame RBDyn expects.
+  bool tauExtBaseForceWorld_ = false;
 
   /** Compute qaccExt[0] from the external torques estimated by ExternalForcesObserver. */
   Eigen::VectorXd computeQaccExt();

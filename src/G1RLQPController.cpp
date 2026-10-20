@@ -644,6 +644,9 @@ void G1RLQPController::loadSimTest()
   if(!config_.has("sim_test")) { return; }
   const auto st = config_("sim_test");
   simTestEnabled_ = true;
+  st("qacc_ext_gain", qaccExtGain_);
+  st("tau_ext_base_force_world", tauExtBaseForceWorld_);
+  if(qaccExtGain_ != 1.0) { mc_rtc::log::warning("[G1RLQPController] sim_test: qacc_ext observation scaled by {}", qaccExtGain_); }
   if(st.has("command_schedule"))
   {
     for(const std::vector<double> & row : st("command_schedule"))
@@ -733,8 +736,13 @@ Eigen::VectorXd G1RLQPController::computeQaccExt()
   Eigen::VectorXd out = Eigen::VectorXd::Zero(6 + nJoints);
 
   // Set by ExternalForcesObserver (update: true), in mc_rtc dof order.
-  const Eigen::VectorXd & tauExt = real_robot.externalTorques();
+  Eigen::VectorXd tauExt = real_robot.externalTorques();
   if(tauExt.size() != mb.nrDof()) { return out; }
+  if(tauExtBaseForceWorld_)
+  {
+    // sva rotation is world-to-base.
+    tauExt.segment<3>(3) = real_robot.mbc().bodyPosW[0].rotation() * tauExt.segment<3>(3);
+  }
 
   // Same mass matrix as the observer (includes the rotor inertia, like MuJoCo's armature).
   rbd::ForwardDynamics fd(mb);
@@ -752,7 +760,7 @@ Eigen::VectorXd G1RLQPController::computeQaccExt()
     const auto jointIndex = real_robot.jointIndexByName(refJointOrderRLAction[static_cast<size_t>(rlIndex)]);
     out(6 + rlIndex) = qacc(mb.jointPosInDof(static_cast<int>(jointIndex)));
   }
-  return out;
+  return qaccExtGain_ * out;
 }
 
 // bool G1RLQPController::byPassQPControl()

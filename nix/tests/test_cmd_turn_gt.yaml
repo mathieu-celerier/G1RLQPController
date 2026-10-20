@@ -1,0 +1,27 @@
+ObserverPipelines:
+  - name: Pipeline
+    gui: true
+    log: true
+    observers:
+      - type: Encoder
+        velocity: encoderVelocities
+      - type: BodySensor
+        update: true
+        bodySensor: FloatingBase
+      - type: ExternalForcesObserver
+        update: true
+        is_active: true
+        estimation_method: SimulatorGroundTruth
+        simulator_filter_cutoff_hz: 5.0
+        residual_gain: 31.4159
+        torque_source_type: CommandedTorque
+        use_forces_from_ft_sensors: false
+sim_test:
+  command_schedule:
+    - [0.0, 0.5, 0.0, 0.0]
+    - [5.0, 0.3, 0.0, 0.5]
+    - [13.0, 0.0, 0.0, -0.5]
+    - [21.0, 0.0, 0.0, 0.5]
+    - [29.0, 0.3, 0.0, -0.5]
+    - [37.0, 0.5, 0.0, 0.0]
+  tau_ext_base_force_world: true

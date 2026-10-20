@@ -1,134 +1,377 @@
 ---
 # If true, the FSM transitions are managed by an external tool
 Managed: false
-# If true and the FSM is self-managed, transitions should be triggered
+
+# If true and the FSM is self-managed, transitions should be triggered manually
 StepByStep: true
-# Change idle behaviour, if true the state is kept until transition,
-# otherwise the FSM holds the last state until transition
+
+# Change idle behaviour:
+# - true: keep the current state
+# - false: hold the last state until transition
 IdleKeepState: false
+
 # Where to look for state libraries
 StatesLibraries:
-- "@MC_STATES_DEFAULT_RUNTIME_INSTALL_PREFIX@"
-- "@MC_STATES_RUNTIME_INSTALL_PREFIX@"
+  - "@MC_STATES_DEFAULT_RUNTIME_INSTALL_PREFIX@"
+  - "@MC_STATES_RUNTIME_INSTALL_PREFIX@"
+
 # Where to look for state files
 StatesFiles:
-- "@MC_STATES_DEFAULT_RUNTIME_INSTALL_PREFIX@/data"
-- "@MC_STATES_RUNTIME_INSTALL_PREFIX@/data"
-# If true, state factory will be more verbose
+  - "@MC_STATES_DEFAULT_RUNTIME_INSTALL_PREFIX@/data"
+  - "@MC_STATES_RUNTIME_INSTALL_PREFIX@/data"
+
+# If true, the state factory will be more verbose
 VerboseStateFactory: false
-# Additional robots to load
+
+# =============================================================================
+# Additional robots
+# =============================================================================
+
 robots:
   ground:
     module: env/ground
 
-# Collision constraint
+# =============================================================================
+# Constraints
+# =============================================================================
+
 collisions:
-- type: collision
-  useMinimal: true
+  - type: collision
+    useMinimal: true
+
+# =============================================================================
+# State-estimation pipeline
+# =============================================================================
 
 ObserverPipelines:
-- name: Pipeline
-  observers:
-    # Add an encoder observer to read joint velocities (Required for closed loop control)
-    - type: Encoder
-      velocity: encoderVelocities
-      
-    # For humanoid robots, add an estimator to compute the floating base state (position, velocity and orientation of the robot in the world)
-    # BodySensor observer can be used in simulation, but on the real-robot, tilt observer must be used instead.
-    # - type: BodySensor
-    #   update: true
-    #   bodySensor: FloatingBase
+  - name: Pipeline
+    gui: true
+    log: true
+    observers:
+      # Read joint positions and velocities
+      - type: Encoder
+        velocity: encoderVelocities
 
-    - type: ExternalForcesObserver
-      estimation_method: MomentumObserver   # or ForceSensorBased
-      # MomentumObserver-only keys:
-      residual_gain: 10.0              # observer gain K; higher = faster response, more noise
-      torque_source_type: CommandedTorque  # JointTorqueMeasurement preferred when available
+      # Floating-base state estimator for simulation
+      - type: BodySensor
+        update: true
+        bodySensor: FloatingBase
 
-# Implement some additional text states
+      # External-force estimator disabled for now because the robot model
+      # currently has no configured force sensors.
+      #
+      - type: ExternalForcesObserver
+        update: true
+        is_active: true
+        estimation_method: MomentumObserver
+        # estimation_method: MomentumObserver
+        simulator_filter_cutoff_hz: 5.0
+        residual_gain: 31.4159
+        torque_source_type: CommandedTorque
+        use_forces_from_ft_sensors: false
+
+# =============================================================================
+# FSM
+# =============================================================================
+
 states: {}
-# Transitions map
+
 transitions:
-- [G1RLQPController_Initial, OK, G1RLQPController_Initial, Strict]
-# Initial state
-init: G1RLQPController_Initial
+  - [G1RLQPController_Initial, OK, G1RLQPController_acceleration, Strict]
+  - [G1RLQPController_acceleration, OK, G1RLQPController_Initial, Strict]
 
-# RL policy configuration parameters
+init: G1RLQPController_acceleration
+Plugins: [mc_joystick_plugin]
+
+# =============================================================================
+# RL policy configuration
+# =============================================================================
+
+# Fill these two paths immediately before launching the controller.
+# Index 0: JointPositionAction policy; index 1: JointAccelerationAction policy.
 policy_path:
-  - "/home/raphaelbarrabes/workspace/new-rl-qp-controller/policy/2026-07-18_13-45-24.onnx"
+  - "/home/raphaelbarrabes/workspace/src/G1RLQPController/policy/policy_pos_08_07.onnx"
+  - "/home/raphaelbarrabes/workspace/src/G1RLQPController/policy/policy_acc_08_05.onnx"
 
-default_policy_index: 0 # Index of the default policy to use
+position_policy_index: 0
+acceleration_policy_index: 1
+
+policy_common:
+  - # The QP is mandatory for PostureTask::refAccel.
+    use_QP: false 
+
+    # MuJoCo timestep:
+    # 0.0025 s × decimation 4 = policy period of 0.01 s.
+    policy_step_size: 0.01
+    physics_step_size: 0.0025
+
+    # Weight of the PostureTask acceleration objective in the QP.
+    # PostureTask Kp and Kd are set to zero in the C++ code.
+    posture_weight: 10.0
+
+    # Safety ratio applied to the acceleration policy:
+    # 0.0 = policy runs but accelerations are not applied
+    # 1.0 = full policy accelerations are applied
+    acceleration_action_ratio: 1.0
+
+    # Command observed by the policy:
+    # [vx, vy, yaw_rate]
+    velocity_command: [0.0, 0.0, 0.0]
+
+    # -------------------------------------------------------------------------
+    # Acceleration action scale
+    #
+    # qdd_command =
+    #   acceleration_action_ratio
+    #   × action_scale
+    #   × raw_ONNX_action
+    #
+    # JointAccelerationActionCfg was trained with scale = 30.
+    # -------------------------------------------------------------------------
+
+    action_scale:
+      left_hip_pitch_joint: 30.0
+      left_hip_roll_joint: 30.0
+      left_hip_yaw_joint: 30.0
+      left_knee_joint: 30.0
+      left_ankle_pitch_joint: 30.0
+      left_ankle_roll_joint: 30.0
+
+      right_hip_pitch_joint: 30.0
+      right_hip_roll_joint: 30.0
+      right_hip_yaw_joint: 30.0
+      right_knee_joint: 30.0
+      right_ankle_pitch_joint: 30.0
+      right_ankle_roll_joint: 30.0
+
+      waist_yaw_joint: 30.0
+      waist_roll_joint: 30.0
+      waist_pitch_joint: 30.0
+
+      left_shoulder_pitch_joint: 30.0
+      left_shoulder_roll_joint: 30.0
+      left_shoulder_yaw_joint: 30.0
+      left_elbow_joint: 30.0
+      left_wrist_roll_joint: 30.0
+      left_wrist_pitch_joint: 30.0
+      left_wrist_yaw_joint: 30.0
+
+      right_shoulder_pitch_joint: 30.0
+      right_shoulder_roll_joint: 30.0
+      right_shoulder_yaw_joint: 30.0
+      right_elbow_joint: 30.0
+      right_wrist_roll_joint: 30.0
+      right_wrist_pitch_joint: 30.0
+      right_wrist_yaw_joint: 30.0
+
+    # -------------------------------------------------------------------------
+    # Legacy PD parameters
+    #
+    # These values are kept temporarily because initializeRobot() may still
+    # read kp, kd and pd_gains_ratio.
+    #
+    # They are not applied to the PostureTask, whose Kp and Kd are set to zero.
+    # -------------------------------------------------------------------------
+
+    pd_gains_ratio: 1.0
+
+    kp:
+      left_hip_pitch_joint: 40.179239
+      left_hip_roll_joint: 99.098428
+      left_hip_yaw_joint: 40.179239
+      left_knee_joint: 99.098428
+      left_ankle_pitch_joint: 28.501246
+      left_ankle_roll_joint: 28.501246
+
+      right_hip_pitch_joint: 40.179239
+      right_hip_roll_joint: 99.098428
+      right_hip_yaw_joint: 40.179239
+      right_knee_joint: 99.098428
+      right_ankle_pitch_joint: 28.501246
+      right_ankle_roll_joint: 28.501246
+
+      waist_yaw_joint: 40.179239
+      waist_roll_joint: 28.501246
+      waist_pitch_joint: 28.501246
+
+      left_shoulder_pitch_joint: 14.250623
+      left_shoulder_roll_joint: 14.250623
+      left_shoulder_yaw_joint: 14.250623
+      left_elbow_joint: 14.250623
+      left_wrist_roll_joint: 14.250623
+      left_wrist_pitch_joint: 16.778327
+      left_wrist_yaw_joint: 16.778327
+
+      right_shoulder_pitch_joint: 14.250623
+      right_shoulder_roll_joint: 14.250623
+      right_shoulder_yaw_joint: 14.250623
+      right_elbow_joint: 14.250623
+      right_wrist_roll_joint: 14.250623
+      right_wrist_pitch_joint: 16.778327
+      right_wrist_yaw_joint: 16.778327
+
+    kd:
+      left_hip_pitch_joint: 2.557890
+      left_hip_roll_joint: 6.308802
+      left_hip_yaw_joint: 2.557890
+      left_knee_joint: 6.308802
+      left_ankle_pitch_joint: 1.814446
+      left_ankle_roll_joint: 1.814446
+
+      right_hip_pitch_joint: 2.557890
+      right_hip_roll_joint: 6.308802
+      right_hip_yaw_joint: 2.557890
+      right_knee_joint: 6.308802
+      right_ankle_pitch_joint: 1.814446
+      right_ankle_roll_joint: 1.814446
+
+      waist_yaw_joint: 2.557890
+      waist_roll_joint: 1.814446
+      waist_pitch_joint: 1.814446
+
+      left_shoulder_pitch_joint: 0.907223
+      left_shoulder_roll_joint: 0.907223
+      left_shoulder_yaw_joint: 0.907223
+      left_elbow_joint: 0.907223
+      left_wrist_roll_joint: 0.907223
+      left_wrist_pitch_joint: 1.068142
+      left_wrist_yaw_joint: 1.068142
+
+      right_shoulder_pitch_joint: 0.907223
+      right_shoulder_roll_joint: 0.907223
+      right_shoulder_yaw_joint: 0.907223
+      right_elbow_joint: 0.907223
+      right_wrist_roll_joint: 0.907223
+      right_wrist_pitch_joint: 1.068142
+      right_wrist_yaw_joint: 1.068142
+
+    # -------------------------------------------------------------------------
+    # Default joint positions
+    #
+    # Used for the policy observation:
+    # joint_pos_rel = q - q0
+    # -------------------------------------------------------------------------
+
+    q0:
+      left_hip_pitch_joint: -0.312
+      left_hip_roll_joint: 0.0
+      left_hip_yaw_joint: 0.0
+      left_knee_joint: 0.669
+      left_ankle_pitch_joint: -0.363
+      left_ankle_roll_joint: 0.0
+
+      right_hip_pitch_joint: -0.312
+      right_hip_roll_joint: 0.0
+      right_hip_yaw_joint: 0.0
+      right_knee_joint: 0.669
+      right_ankle_pitch_joint: -0.363
+      right_ankle_roll_joint: 0.0
+
+      waist_yaw_joint: 0.0
+      waist_roll_joint: 0.0
+      waist_pitch_joint: 0.0
+
+      left_shoulder_pitch_joint: 0.2
+      left_shoulder_roll_joint: 0.2
+      left_shoulder_yaw_joint: 0.0
+      left_elbow_joint: 0.6
+      left_wrist_roll_joint: 0.0
+      left_wrist_pitch_joint: 0.0
+      left_wrist_yaw_joint: 0.0
+
+      right_shoulder_pitch_joint: 0.2
+      right_shoulder_roll_joint: -0.2
+      right_shoulder_yaw_joint: 0.0
+      right_elbow_joint: 0.6
+      right_wrist_roll_joint: 0.0
+      right_wrist_pitch_joint: 0.0
+      right_wrist_yaw_joint: 0.0
+
+    # -------------------------------------------------------------------------
+    # Exact order of the 29 policy outputs
+    # -------------------------------------------------------------------------
+
+    ref_joint_order:
+      - left_hip_pitch_joint
+      - left_hip_roll_joint
+      - left_hip_yaw_joint
+      - left_knee_joint
+      - left_ankle_pitch_joint
+      - left_ankle_roll_joint
+
+      - right_hip_pitch_joint
+      - right_hip_roll_joint
+      - right_hip_yaw_joint
+      - right_knee_joint
+      - right_ankle_pitch_joint
+      - right_ankle_roll_joint
+
+      - waist_yaw_joint
+      - waist_roll_joint
+      - waist_pitch_joint
+
+      - left_shoulder_pitch_joint
+      - left_shoulder_roll_joint
+      - left_shoulder_yaw_joint
+      - left_elbow_joint
+      - left_wrist_roll_joint
+      - left_wrist_pitch_joint
+      - left_wrist_yaw_joint
+
+      - right_shoulder_pitch_joint
+      - right_shoulder_roll_joint
+      - right_shoulder_yaw_joint
+      - right_elbow_joint
+      - right_wrist_roll_joint
+      - right_wrist_pitch_joint
+      - right_wrist_yaw_joint
+
+# =============================================================================
+# Mode-specific policy parameters
+# =============================================================================
+
 policies:
-  # index 0 : policyName1
-  - use_QP: true
-    policy_step_size: 0.01 # Policy step size in seconds
-    physics_step_size: 0.001 # Physics step size in seconds
-    pd_gains_ratio: 1.0
+  - action_mode: position
+    use_QP: true
+    position_task_weight: 1000.0
+    velocity_command: [0.0, 0.0, 0.0]
 
+    # Exact scale used by the MJLab JointPositionActionCfg policy.
     action_scale:
-        joint_name1: gain value e.g 100.0
-        joint_name2: gain value e.g 100.0
-        ...
-        joint_nameN: gain value e.g 100.0
-    kp:
-        joint_name1: gain value e.g 100.0
-        joint_name2: gain value e.g 100.0
-        ...
-        joint_nameN: gain value e.g 100.0
-    kd:
-        joint_name1: gain value e.g 100.0
-        joint_name2: gain value e.g 100.0
-        ...
-        joint_nameN: gain value e.g 100.0
+      left_hip_pitch_joint: 0.5475464629911068
+      left_hip_roll_joint: 0.35066146637882434
+      left_hip_yaw_joint: 0.5475464629911068
+      left_knee_joint: 0.35066146637882434
+      left_ankle_pitch_joint: 0.43857731392336724
+      left_ankle_roll_joint: 0.43857731392336724
+      right_hip_pitch_joint: 0.5475464629911068
+      right_hip_roll_joint: 0.35066146637882434
+      right_hip_yaw_joint: 0.5475464629911068
+      right_knee_joint: 0.35066146637882434
+      right_ankle_pitch_joint: 0.43857731392336724
+      right_ankle_roll_joint: 0.43857731392336724
+      waist_yaw_joint: 0.5475464629911068
+      waist_roll_joint: 0.43857731392336724
+      waist_pitch_joint: 0.43857731392336724
+      left_shoulder_pitch_joint: 0.43857731392336724
+      left_shoulder_roll_joint: 0.43857731392336724
+      left_shoulder_yaw_joint: 0.43857731392336724
+      left_elbow_joint: 0.43857731392336724
+      left_wrist_roll_joint: 0.43857731392336724
+      left_wrist_pitch_joint: 0.07450087032950714
+      left_wrist_yaw_joint: 0.07450087032950714
+      right_shoulder_pitch_joint: 0.43857731392336724
+      right_shoulder_roll_joint: 0.43857731392336724
+      right_shoulder_yaw_joint: 0.43857731392336724
+      right_elbow_joint: 0.43857731392336724
+      right_wrist_roll_joint: 0.43857731392336724
+      right_wrist_pitch_joint: 0.07450087032950714
+      right_wrist_yaw_joint: 0.07450087032950714
 
-    # q0 must respect the joint order used in the RL framework (for action_scale, kp and kd, the joint order does not matter)
-    q0:
-      joint_name1: joint pos value in rad e.g 0.0
-      joint_name2: joint pos value in rad e.g 0.0
-      ...
-      joint_nameN: joint pos value in rad e.g 0.0
-    
-    # The order of joints in action vector (policy output)
-    # Some RL policies may not control all the joints of the robot, in that case, only the controlled joints should be listed here.
-    ref_joint_order:
-      - joint_name1
-      - joint_name2
-      ...
-      - joint_nameN
-
-  # index 1 : policyName2
-  - use_QP: true
-    policy_step_size: 0.01 # Policy step size in seconds
-    physics_step_size: 0.001 # Physics step size in seconds
-    pd_gains_ratio: 1.0
-
-    action_scale:
-        joint_name1: gain value e.g 100.0
-        joint_name2: gain value e.g 100.0
-        ...
-        joint_nameN: gain value e.g 100.0
-    kp:
-        joint_name1: gain value e.g 100.0
-        joint_name2: gain value e.g 100.0
-        ...
-        joint_nameN: gain value e.g 100.0
-    kd:
-        joint_name1: gain value e.g 100.0
-        joint_name2: gain value e.g 100.0
-        ...
-        joint_nameN: gain value e.g 100.0
-
-    # q0 must respect the joint order used in the RL framework (for action_scale, kp and kd, the joint order does not matter)
-    q0:
-      joint_name1: joint pos value in rad e.g 0.0
-      joint_name2: joint pos value in rad e.g 0.0
-      ...
-      joint_nameN: joint pos value in rad e.g 0.0
-    
-    # The order of joints in action vector (policy output)
-    # Some RL policies may not control all the joints of the robot, in that case, only the controlled joints should be listed here.
-    ref_joint_order:
-      - joint_name1
-      - joint_name2
-      ...
-      - joint_nameN
+  - action_mode: acceleration
+    use_QP: true 
+    posture_weight: 10.0
+    acceleration_action_ratio: 1.0
+    acceleration_limit: 900.0
+    velocity_command: [0.4, 0.0, 0.0]
+    # action_scale defaults to the common 30 rad/s^2 map above.

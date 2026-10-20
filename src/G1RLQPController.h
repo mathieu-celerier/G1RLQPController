@@ -1,12 +1,25 @@
 #pragma once
 
 #include <mc_control/fsm/Controller.h>
+#include <mc_tasks/PostureTask.h>
 #include <mc_tasks/TorqueJointTask.h>
 
-#include "api.h"
+#include <Eigen/Core>
+
+#include <array>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
 
 #include "RLPolicyInterface.h"
+#include "api.h"
 #include "utils.h"
+
+#define POSITION 0
+#define ACCELERATION 1
+#define ACCELERATION_WITH_EXTERNAL_FORCE 2
+#define TORQUE 3
 
 
 /**
@@ -76,6 +89,19 @@ struct G1RLQPController_DLLAPI G1RLQPController : public mc_control::fsm::Contro
 
   bool run() override;
   void reset(const mc_control::ControllerResetData & reset_data) override;
+  int rlmode = POSITION;
+
+  /** Switch to policy 0 and activate the position-control TorqueJointTask. */
+  void enterPositionControl();
+
+  /** Switch to policy 1 and activate the zero-gain acceleration PostureTask. */
+  void enterAccelerationControl();
+
+  /** Remove the position task when leaving the initial FSM state. */
+  void leavePositionControl();
+
+  /** Zero and remove the acceleration task when leaving its FSM state. */
+  void leaveAccelerationControl();
 
   /** @brief Enable or disable the CBF-QP layer at runtime. */
   void activateQPControl(bool activate);
@@ -95,12 +121,46 @@ struct G1RLQPController_DLLAPI G1RLQPController : public mc_control::fsm::Contro
    */
   void initializeRLObservation();
 
+  /** Refill the full observation history with the current measured state. */
+  void resetRLHistory();
   // =========================================================================
-  // QP Task
+  // PostureTask — contrôle en accélération
   // =========================================================================
 
-  /** @brief Torque-space whole-body task fed into the CBF-QP solver. */
-  std::shared_ptr<mc_tasks::TorqueJointTask> torqueJointTask;
+  /**
+   * @brief PostureTask utilisée pour envoyer les accélérations articulaires
+   * produites par la policy au QP.
+   */
+  std::shared_ptr<mc_tasks::PostureTask> postureTaskRL_;
+
+  /** Position-policy task implementing the actuator PD law in torque space. */
+  std::shared_ptr<mc_tasks::TorqueJointTask> torqueJointTaskRL_;
+
+  /**
+   * @brief Accélérations demandées, dans l'ordre canonique mc_rtc.
+   *
+   * Taille : nombre d’actions de la policy, normalement 29.
+   */
+  Eigen::VectorXd qddRL_;
+
+  /**
+   * @brief Référence d’accélération envoyée à la PostureTask.
+   *
+   * Le mapping exact vers les degrés de liberté mc_rtc sera construit
+   * dans initializeAccelerationControl() et dans utils.cpp.
+   */
+  Eigen::VectorXd qddRefFull_;
+
+  /**
+   * @brief Facteur temporaire appliqué aux accélérations de la policy.
+   *
+   * 0.0 : policy calculée mais non appliquée.
+   * 1.0 : accélération complète.
+   */
+  double accelerationActionRatio_ = 1.0;
+
+  /** Symmetric acceleration clamp applied after scaling the ONNX action. */
+  double accelerationLimit_ = 900.0;
   
   // =========================================================================
   // Robot state
@@ -169,6 +229,23 @@ struct G1RLQPController_DLLAPI G1RLQPController : public mc_control::fsm::Contro
   /** @brief Full observation vector fed to the policy at each inference step. */
   Eigen::VectorXd currentObservation;
 
+  static constexpr int HISTORY_SIZE = 5;
+
+  // Index 0 = valeur actuelle.
+  // Index HISTORY_SIZE - 1 = valeur la plus ancienne.
+  std::array<Eigen::Vector3d, HISTORY_SIZE> linVel;
+  std::array<Eigen::Vector3d, HISTORY_SIZE> angVel;
+  std::array<Eigen::Vector3d, HISTORY_SIZE> projectedGravity;
+
+  std::array<Eigen::VectorXd, HISTORY_SIZE> jointPos;
+  std::array<Eigen::VectorXd, HISTORY_SIZE> jointVel;
+  std::array<Eigen::VectorXd, HISTORY_SIZE> jointAction;
+
+  std::array<Eigen::Vector3d, HISTORY_SIZE> velCmd;
+
+  // Commande [vx, vy, yaw_rate] donnée à la policy.
+  Eigen::Vector3d currentVelCmd = Eigen::Vector3d::Zero();
+
   // Observation history buffers (uncomment and adapt to your policy)
   // History buffers store the last HISTORY_SIZE policy steps of each observation
   // term. Index 0 = most recent, index HISTORY_SIZE-1 = oldest.
@@ -229,7 +306,7 @@ struct G1RLQPController_DLLAPI G1RLQPController : public mc_control::fsm::Contro
   size_t currentPolicyIndex = 0;
 
   /** @brief ONNX runtime wrapper for running policy inference. */
-  std::unique_ptr<RLPolicyInterface> rlPolicy;
+  std::shared_ptr<RLPolicyInterface> rlPolicy;
 
   /** @brief Utility helpers for FSM state lifecycle and observation building. */
   utils utilsClass;
@@ -239,11 +316,21 @@ private:
 
   /** @brief Register data entries visible in mc_log_ui. */
   void addLog();
+  void RLuseJoyStickInputs();
   /** @brief Register GUI elements visible in RViz and mc_mujoco. */
   void addGui();
-
-  /** @brief Load robot parameters (gains, action scale, q0) from config. */
+  /** @brief Configure the TorqueJointTask for the active position policy. */
+  void initializePositionControl();
+  /** @brief Initialise la PostureTask pour le contrôle en accélération. */
+  void initializeAccelerationControl();
+  /** @brief Initialize robot-dependent buffers and actuator control mode. */
   void initializeRobot();
+
+  /** @brief Load the parameters shared by and specific to one policy. */
+  void loadPolicyConfiguration(size_t policyIndex);
+
+  /** @brief Select, load and initialize one policy and its observation history. */
+  void switchPolicy(size_t policyIndex);
 
   /** @brief Load and validate the ONNX policy, build joint mappings. */
   void configRL();
@@ -267,7 +354,7 @@ private:
   std::string robotName_;
   
   // --- CBF-QP constraint parameters ---
-  double velPercent_ = 0.95; // Percentage of the max velocity taking account in the joint velocity constraint.
+  double velPercent_ = 0.99; // Percentage of the max velocity taking account in the joint velocity constraint.
   double dsPercent_ = 0.01; // Percentage of the max joint range taking account in the joint position limit constraint.
   double diPercent_ = 0.1; // Doesn't matter since di > ds. This variable is not used in the constraint dynamics.
 
@@ -288,5 +375,18 @@ private:
 
   // --- Policy ---
   std::vector<std::string> policyPaths_; ///< Paths to ONNX files (one per policy index)
+  std::vector<std::shared_ptr<RLPolicyInterface>> loadedPolicies_;
+  size_t positionPolicyIndex_ = 0;
+  size_t accelerationPolicyIndex_ = 1;
+  bool positionTaskActive_ = false;
+  bool accelerationTaskActive_ = false;
   std::map<std::string, double> q0_map_; ///< Raw q0 map used to build mcRtcToRLFrameworkJointMap
+    // Joystick input handling
+  std::vector<bool> directionButtons_ = std::vector<bool>(4, false); // Up, Down, Left, Right
+  double joystickDeadZone_ = 0.02; // Dead zone for joystick inputs
+  Eigen::Vector2d leftStick_ = Eigen::Vector2d(0.5, 0.5); // x (UP), y (LEFT)
+  Eigen::Vector2d rightStick_ = Eigen::Vector2d(0.5, 0.5); // x (UP), y (LEFT)
+  double maxVelCmd_ = 0.3;
+  double maxYawCmd_ = 0.5;
+  bool useJoystick_ = false;
 };

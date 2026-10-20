@@ -1,3 +1,5 @@
 add_fsm_state_simple(G1RLQPController_Initial)
 
+add_fsm_state_simple(G1RLQPController_acceleration)
+
 add_fsm_data_directory(data)

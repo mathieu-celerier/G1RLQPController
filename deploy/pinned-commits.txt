@@ -16,7 +16,7 @@ src/mc_external_forces_observer | 037de67544ed1a5b37e702c48bce28a6da284986 | htt
 src/mc_g1 | 7e35e3fc0e3e0d9e2edbabbac2c5ca7b79e93bac | https://github.com/isri-aist/mc_g1 | DIRTY on main: src/g1.cpp -> deploy/mc_g1-local.patch; also pushed as git@github.com:mathieu-celerier/mc_g1.git topic/raphael-live-2026-08-13 (3237780)
 src/mc_joystick_plugin | 2a9dfb2ae58c3013a182c3c9807bf3c9a46da84f | https://github.com/bastien-muraccioli/mc_joystick_plugin | clean on main
 src/mc_mujoco | 5b75a4cc24621831cdf80830e64b00b3cb073048 | https://github.com/bastien-muraccioli/mc_mujoco | DIRTY on main: src/mj_sim_impl.h -> deploy/mc_mujoco-local.patch; also pushed as git@github.com:mathieu-celerier/mc_mujoco.git topic/raphael-live-2026-08-13 (caf4e80)
-src/mc_rtc | 9aae9c4745eec409572eb631aa3fbce17e5cdde2 | https://github.com/bastien-muraccioli/mc_rtc | DIRTY on master: src/mc_solver/DynamicsConstraint.cpp -> deploy/mc_rtc-local.patch
+src/mc_rtc | 9aae9c4745eec409572eb631aa3fbce17e5cdde2 | https://github.com/bastien-muraccioli/mc_rtc | DIRTY on master: src/mc_solver/DynamicsConstraint.cpp -> deploy/mc_rtc-local.patch (NOT NEEDED: no-op for G1RLQPController, which builds DynamicsConstraint with activateConstraints=true; build bastien 9aae9c4 clean)
 src/mc_rtc_ros_compat | d294d5d7a7526db1c2d5ab4605569255dc3a459e | https://github.com/jrl-umi3218/mc_rtc_ros_compat | clean on main
 src/mc_state_observation | e438b9e0dbd25a20bbc39fcf00bfb8c963e19bec | https://github.com/bastien-muraccioli/mc_state_observation | clean on main
 src/mesh-sampling | 554bbc283d23c81854937955655674ebd3b7f225 | https://github.com/jrl-umi3218/mesh_sampling | clean on master
@@ -42,3 +42,6 @@ new-rl-qp-controller | 6da19807964b8b21c3c2f1a5448cc71689ad4a8b | git@github.com
 # Note: g1_mj_description-local.patch only adds an XML comment (no effect); kept for completeness.
 # Note: mc_rtc base 9aae9c4 is on bastien-muraccioli/mc_rtc master and hrp5p; master has moved on (e49a195 adds
 # torque-derivative limits in the same function). No branch contains the local DynamicsConstraint change.
+# Note: mc_rtc-local.patch only comments out the `if(!activateConstraints_)` block that relaxes torque limits.
+# G1RLQPController.cpp:21 is its only DynamicsConstraint and passes activateConstraints=true, so the block never runs.
+# Kept for the record only; do not apply.

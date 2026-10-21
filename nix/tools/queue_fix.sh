@@ -17,7 +17,7 @@ battery() {  # $1 tag, $2 test-file prefix ("jdr_test_" or "test_"), $3 straight
 {
 CTL_BASE=run/ctl_override_jdr.yaml battery jdr jdr_test_ jdr_straight.yaml
 CTL_BASE=run/ctl_override_momentum.yaml battery arm test_ jdr_straight.yaml
-for n in fix_*_straight fix_*_turn fix_*_cmd_sched; do [ -f $n.log ] && echo "$n: $(grep -c 'QLD fail' $n.log) QP failures"; done
+for f in fix_*_straight.log fix_*_turn.log fix_*_cmd_sched.log; do echo "${f%.log}: $(grep -c "QLD fail" $f) QP failures"; done
 } > tests_fix.txt 2>&1
 cp mj_g1_mjlab.yaml $MJ
 echo QUEUE_FIX_DONE >> tests_fix.txt

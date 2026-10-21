@@ -59,3 +59,16 @@ whatever the turn rate, direction, action law or sim model. Fixed in mc_mujoco
 - `tools/make_matched_g1_model.py` extra parts: `priority` (foot friction 0.6 wins over the floor),
   `collision` (mjlab capsules + exclusions), `limits` (hip roll 139 Nm), `solver` (ls_iterations 20).
 - `tools/queue_fix.sh`: the post-fix battery for both acceleration policies.
+
+After the fix (`run/tests_fix.txt`), both ArmWrenchRamp `model_14999` and ArmWrenchJointDR `model_17998`:
+
+| Test | 14999 | 17998 |
+| --- | --- | --- |
+| stock 1 ms model, straight 0.5 | 568 s, no fall (was 25 s) | 568 s, no fall (was 274 s) |
+| stock 2.5 ms model | 1306 s, no fall | 1298 s, no fall |
+| matched model, turn schedule (±0.5 rad/s, on the spot, walking) | no fall, wz ±0.46–0.48 | no fall, wz ±0.49–0.52 |
+| matched, full command schedule | 834 s, no fall | 824 s, no fall |
+| matched, 150 N pelvis pushes (3 seeds) | 0 falls in 2975 s | 0 falls in 2970 s |
+| matched, 300 N pushes (3 seeds) | 3 falls, 2.4/min | 3 falls, 1.5/min |
+
+No QP failures outside the 300 N falls.

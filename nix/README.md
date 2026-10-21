@@ -107,3 +107,26 @@ per-axis bias drawn once per sensor). `tools/queue_noise.sh`, `run/tests_noise.t
 | n4: 4× n1 | no fall | 0.65 falls/min | tilt bias 3.4°, forward velocity −0.06 m/s, gyro bias 0.03 rad/s passed to the observation |
 
 (Ground-truth base state 0.31, mjlab 0.38 falls/min; 5–6 falls per row, so ±40 %.)
+
+## Raphaël's 08-13 policy for comparison (2026-10-21)
+
+`policy/policy_acc_08_13_21550.onnx` (g1_velocity `2026-08-13_18-31-06/model_21550`, exported with mjlab's runner
+exporter, max |torch − ONNX| 7e-5) is policy index 4: same action class and per-joint scales as the ArmWrench
+policies, 495 inputs (no `qacc_ext`). Override files `run/ctl_override_b0813{,_tilt}.yaml`; battery
+`tools/queue_b0813.sh` → `run/tests_b0813.txt` (raw logs deleted after conversion, `DROP_BIN=1`: about 8.5 GB per
+150 s run).
+
+| mc_mujoco | 08-13 (`model_21550`) | ArmWrenchJointDR (`model_17998`) |
+| --- | --- | --- |
+| stock model 1 ms / 2.5 ms, 0.5 m/s | no fall, 0.59 / 0.48 m/s | no fall, 0.60 / 0.48 m/s |
+| turn schedule, command schedule | no fall; 0.1 m/s gives 0.02 m/s and 0.18 rad/s yaw | no fall; 0.1 m/s gives 0.09 m/s |
+| 150 N pushes, 3 seeds | 0 falls in 3056 s | 0 falls in 2970 s |
+| 300 N at CoM, ground truth, 6 seeds | 0.44 falls/min | 0.31 |
+| 300 N at CoM, Tilt, perfect IMU | 0.98 falls/min | 0.60 |
+| Tilt, n4 IMU: turn schedule | no fall, turn in place +0.27 rad/s for +0.5 | no fall, +0.49 |
+| Tilt, n4 IMU: command schedule | **falls at 21 s** (0.1 m/s segment) | no fall |
+| Tilt, n4 IMU: 300 N at CoM | 1.65 falls/min | 0.65 |
+
+mjlab, same protocol (64 envs × 20 s): 300 N force pushes 0.28 vs 0.38 falls/env-min, turns and controller-model
+test 0 falls for both, tracking grids equivalent. With ground-truth state the two policies are equal; with the
+estimated state and a noisy IMU, 08-13 degrades much more.

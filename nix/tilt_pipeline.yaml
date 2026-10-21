@@ -1,0 +1,22 @@
+# IMU-based base estimation (Tilt observer, Acc-CBF-QP paper pipeline) instead of the simulator's FloatingBase.
+ObserverPipelines:
+  - name: Pipeline
+    gui: true
+    log: true
+    observers:
+      - type: Encoder
+        velocity: encoderVelocities
+      - type: Tilt
+        required: true
+        update: true
+        imuSensor: Accelerometer
+        anchorFrameFunction: G1RLQPController::anchorFrame
+        filterGains: {initAlpha: 2, initBeta: 2, initGamma: 1, finalAlpha: 2, finalBeta: 2, finalGamma: 1}
+      - type: ExternalForcesObserver
+        update: true
+        is_active: true
+        estimation_method: MomentumObserver
+        simulator_filter_cutoff_hz: 5.0
+        residual_gain: 31.4159
+        torque_source_type: CommandedTorque
+        use_forces_from_ft_sensors: false

@@ -2,7 +2,9 @@
 Steps (cumulative, chosen with --parts): feet, joints, masses. Timestep 2.5 ms implicitfast always.
 Extra parts: priority (mjlab foot geom priority, so the foot friction 0.6 wins over the floor's 1.0),
 collision (mjlab's capsule collision geoms and contact exclusions instead of the mesh hulls),
-limits (mjlab actuator torque limits: hip roll 139 Nm instead of 88), solver (ls_iterations)."""
+limits (mjlab actuator torque limits: hip roll 139 Nm instead of 88), solver (ls_iterations),
+imu (gyro + accelerometer named Accelerometer_gyro / _accelerometer on torso_link at mc_g1's
+"Accelerometer" body-sensor pose, which mc_mujoco needs to fill that sensor)."""
 import sys, argparse, os, numpy as np, mujoco
 p=argparse.ArgumentParser(); p.add_argument("src"); p.add_argument("out"); p.add_argument("--parts", default="feet,joints,masses"); a=p.parse_args()
 parts=set(a.parts.split(",")) if a.parts else set()
@@ -62,6 +64,12 @@ if "limits" in parts:
     if act.target in fr: act.ctrlrange=fr[act.target].copy()
   for j in spec.joints:
     if j.name in fr: j.actfrcrange=fr[j.name].copy(); j.actfrclimited=mujoco.mjtLimited.mjLIMITED_TRUE
+if "imu" in parts:
+  site=spec.body("torso_link").add_site(); site.name="mc_rtc_imu"; site.pos=[-0.03959, -0.00224, 0.13792]
+  for kind, name, cutoff, noise in ((mujoco.mjtSensor.mjSENS_GYRO, "Accelerometer_gyro", 34.9, 0.0005),
+                                    (mujoco.mjtSensor.mjSENS_ACCELEROMETER, "Accelerometer_accelerometer", 157.0, 0.01)):
+    sn=spec.add_sensor(); sn.name=name; sn.type=kind; sn.objtype=mujoco.mjtObj.mjOBJ_SITE; sn.objname="mc_rtc_imu"
+    sn.cutoff=cutoff; sn.noise=noise
 if "solver" in parts:
   spec.option.ls_iterations=int(A.opt.ls_iterations)
 m=spec.compile(); xml=spec.to_xml()

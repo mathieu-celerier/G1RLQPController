@@ -73,3 +73,23 @@ After the fix (`run/tests_fix.txt`), both ArmWrenchRamp `model_14999` and ArmWre
 | matched, 300 N pushes at the pelvis CoM (6 seeds, `tools/queue_push_com.sh`) | 6 falls, 0.81/min (mjlab 0.56) | 5 falls, 0.31/min (mjlab 0.38) |
 
 No QP failures outside the 300 N falls. The origin-vs-CoM difference is the test, not the controller: `ApplyForcesOnBody` applies the force at the given body-frame point (default origin), 7.6 cm above the pelvis CoM, adding ~0.076·F of pitch/roll torque; mjlab's force push uses `xfrc_applied` at the CoM. `sim_test.pushes.at_com` (default `true`) now matches mjlab.
+
+## IMU-based base estimation (2026-10-21)
+
+The hardware pipeline of the Acc-CBF-QP paper (Muraccioli et al., IROS 2026, H1): `Encoder` → `Tilt`
+(mc_state_observation, built with `-DWITH_ROS_OBSERVERS=OFF`, installs to `install/lib/mc_observers`) →
+`ExternalForcesObserver`. The Tilt observer estimates base tilt and linear velocity from the torso IMU and a
+contact anchor; the controller registers `G1RLQPController::anchorFrame` (sole centres weighted by |τ̂ext|
+at the knees, no foot force sensors, as on the H1).
+
+- `nix/tilt_pipeline.yaml`: the `ObserverPipelines` block, appended to the controller override
+  (`run/ctl_override_jdr_tilt.yaml`). `G1RLQPController_realBasePosW/VelW` log the estimate next to the
+  simulator's `FloatingBase_*`.
+- mc_mujoco fills a body sensor `S` only from MuJoCo sensors named `S_gyro` / `S_accelerometer`; the
+  `g1_mj_description` models have none for mc_g1's `Accelerometer`, so it was empty. `make_matched_g1_model.py
+  --parts ...,imu` adds them on `torso_link` at mc_g1's pose (`g1_29dof_mjlab_imu.xml`). MuJoCo does not apply
+  the XML `noise`: the IMU is perfect here.
+- `model_17998`, matched model, estimated state (`run/tests_tilt.txt`, `tools/queue_tilt.sh`): turn schedule and
+  full command schedule no fall; 150 N pushes 0 falls in 2792 s; 300 N at the CoM 6 falls in 601 s, 0.60/min
+  (ground truth 0.31, mjlab 0.38). Body-frame linear-velocity error 0.008 m/s RMS walking straight, 0.04–0.06
+  around pushes with 0.4–0.6 m/s peaks; tilt error 0.3°.

@@ -6,6 +6,6 @@ Timestep: 0.0025
 LogPolicy: threaded
 LogDirectory: /home/jrl-admin/devel/mc_rtc_nix_ws/run/logs
 ControllerModulePaths: [/home/jrl-admin/devel/mc_rtc_nix_ws/install/lib64/mc_controller]
-ObserverModulePaths: [/home/jrl-admin/devel/mc_rtc_nix_ws/install/lib64/mc_observers]
+ObserverModulePaths: [/home/jrl-admin/devel/mc_rtc_nix_ws/install/lib64/mc_observers, /home/jrl-admin/devel/mc_rtc_nix_ws/install/lib/mc_observers]
 GlobalPluginPaths: [/home/jrl-admin/devel/mc_rtc_nix_ws/install/lib/mc_plugins]
 RobotModulePaths: [/nix/store/d07ps4wmkdf13bv3vm259v6lj8ws2x04-mc-g1-1.0.0/lib/mc_robots]

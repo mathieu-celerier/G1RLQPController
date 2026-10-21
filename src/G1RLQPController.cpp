@@ -36,6 +36,8 @@ G1RLQPController::G1RLQPController(mc_rbdyn::RobotModulePtr rm, double dt, const
   initializeRobot();
   initializeRLPolicy();
   loadSimTest();
+  datastore().make_call("G1RLQPController::anchorFrame",
+                        [this](const mc_rbdyn::Robot & r) { return contactAnchor(r); });
 
   postureTaskRL_ = getPostureTask(robot().name());
   if(!postureTaskRL_)
@@ -910,8 +912,37 @@ bool G1RLQPController::byPassQPControl()
   return true;
 }
 
+std::pair<sva::PTransformd, Eigen::Vector3d> G1RLQPController::contactAnchor(const mc_rbdyn::Robot & r) const
+{
+  const auto & real = realRobot(robot().name());
+  const Eigen::VectorXd & tauExt = real.externalTorques();
+  auto kneeTorque = [&](const char * joint)
+  {
+    if(tauExt.size() != real.mb().nrDof()) { return 1.0; }
+    return std::abs(tauExt(real.mb().jointPosInDof(real.jointIndexByName(joint))));
+  };
+  double wl = kneeTorque("left_knee_joint"), wr = kneeTorque("right_knee_joint");
+  if(wl + wr < 1e-6) { wl = wr = 1.0; }
+  const double leftRatio = wl / (wl + wr);
+  auto solePoint = [&](const char * surface, Eigen::Vector3d & p, Eigen::Vector3d & v)
+  {
+    const auto & body = r.surface(surface).bodyName();
+    const auto & velW = r.bodyVelW(body);
+    p = r.surfacePose(surface).translation();
+    v = velW.linear() + velW.angular().cross(p - r.bodyPosW(body).translation());
+  };
+  Eigen::Vector3d pl, vl, pr, vr;
+  solePoint("LeftFootCenter", pl, vl);
+  solePoint("RightFootCenter", pr, vr);
+  return {sva::PTransformd(Eigen::Matrix3d::Identity(), leftRatio * pl + (1 - leftRatio) * pr),
+          leftRatio * vl + (1 - leftRatio) * vr};
+}
+
 void G1RLQPController::addLog()
 {
+  // Base state the controller uses (estimated by the observer pipeline), to compare with FloatingBase_* (simulator).
+  logger().addLogEntry("G1RLQPController_realBasePosW", [this]() { return realRobot(robot().name()).posW(); });
+  logger().addLogEntry("G1RLQPController_realBaseVelW", [this]() { return realRobot(robot().name()).velW(); });
   logger().addLogEntry("G1RLQPController_qddQP", [this]() { return qddQP_; });
   logger().addLogEntry("G1RLQPController_alphaReal", [this]() { return alphaReal_; });
   logger().addLogEntry("G1RLQPController_qddBaseID", [this]() { return qddBaseID_; });

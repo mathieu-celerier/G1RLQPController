@@ -296,6 +296,11 @@ struct G1RLQPController_DLLAPI G1RLQPController : public mc_control::fsm::Contro
   double nextPushTime_ = 0.0, pushEndTime_ = -1.0;
   Eigen::Vector3d pushForceVec_ = Eigen::Vector3d::Zero();
   void loadSimTest();
+
+  // Contact anchor for the Tilt observer (datastore call "G1RLQPController::anchorFrame", set its
+  // anchorFrameFunction to that): sole centres weighted by |tau_ext| at each knee, as the H1 controller of
+  // the Acc-CBF-QP paper does without foot force sensors. Returns the anchor pose and velocity of `robot`.
+  std::pair<sva::PTransformd, Eigen::Vector3d> contactAnchor(const mc_rbdyn::Robot & robot) const;
   void updateSimTest();
 
   // Commande [vx, vy, yaw_rate] donnée à la policy.

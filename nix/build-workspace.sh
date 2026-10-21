@@ -19,10 +19,11 @@ build() {
   cmake --build "$WS/build/$name" -j"$(nproc)"
   cmake --install "$WS/build/$name"
 }
-ALL=(mc_joystick_plugin mc_external_forces_observer mc_mujoco g1_mj_description G1RLQPController)
+ALL=(mc_joystick_plugin mc_external_forces_observer mc_state_observation mc_mujoco g1_mj_description G1RLQPController)
 for c in "${@:-${ALL[@]}}"; do
   case $c in
     G1RLQPController) build "$c" "$CTRL" ;;
+    mc_state_observation) build "$c" "$WS/src/$c" -DWITH_ROS_OBSERVERS=OFF ;;  # Tilt observer for IMU-based base estimation
     *) build "$c" "$WS/src/$c" ;;
   esac
 done

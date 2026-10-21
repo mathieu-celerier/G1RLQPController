@@ -74,6 +74,8 @@ bool G1RLQPController::run()
   }
 
   updateAccelerationDiagnostics();
+  // The QP only feeds the diagnostics when its torques are replaced; a failed solve must not stop the run.
+  const bool ok = qpSuccess || (mjlabActionLaw_ && rlmode == ACCELERATION);
 
   if(datastore().has("Joystick::connected") && datastore().get<bool>("Joystick::connected"))
   {
@@ -88,7 +90,7 @@ bool G1RLQPController::run()
     useJoystick_ = false;
   }
 
-  return qpSuccess;
+  return ok;
 }
 
 void G1RLQPController::activateQPControl(bool activate)
@@ -646,6 +648,9 @@ void G1RLQPController::loadSimTest()
   simTestEnabled_ = true;
   st("qacc_ext_gain", qaccExtGain_);
   st("tau_ext_base_force_world", tauExtBaseForceWorld_);
+  st("mjlab_action_law", mjlabActionLaw_);
+  st("mjlab_tau_ext_cutoff_hz", mjlabTauExtCutoffHz_);
+  if(mjlabActionLaw_) { mc_rtc::log::warning("[G1RLQPController] sim_test: MJLab action law replaces the QP torques (tau_ext cutoff {} Hz)", mjlabTauExtCutoffHz_); }
   if(qaccExtGain_ != 1.0) { mc_rtc::log::warning("[G1RLQPController] sim_test: qacc_ext observation scaled by {}", qaccExtGain_); }
   if(st.has("command_schedule"))
   {
@@ -726,6 +731,27 @@ void G1RLQPController::updateAccelerationDiagnostics()
   const Eigen::VectorXd rhs =
       H.block(0, 6, 6, nj) * qddRefFull_.tail(nj) + fd.C().head<6>() - tauExt.head<6>();
   qddBaseID_ = -H.topLeftCorner<6, 6>().ldlt().solve(rhs);
+
+  // MJLab action law (see header), same filter as JointAccelerationAction.
+  const double a = std::exp(-2.0 * M_PI * mjlabTauExtCutoffHz_ * timeStep);
+  if(tauExtFiltered_.size() != mb.nrDof()) { tauExtFiltered_ = tauExt; }
+  else { tauExtFiltered_ = a * tauExtFiltered_ + (1.0 - a) * tauExt; }
+  Eigen::VectorXd qdd = qddRefFull_;
+  qdd.head<6>() = -H.topLeftCorner<6, 6>().ldlt().solve(
+      H.block(0, 6, 6, nj) * qdd.tail(nj) + fd.C().head<6>() - tauExtFiltered_.head<6>());
+  const Eigen::VectorXd tauFull = H * qdd + fd.C() - tauExtFiltered_;
+  tauMjlab_.resize(static_cast<Eigen::Index>(jointNames.size()));
+  tauQP_.resize(tauMjlab_.size());
+  for(size_t i = 0; i < jointNames.size(); ++i)
+  {
+    const auto jIdx = robot().jointIndexByName(jointNames[i]);
+    const double lo = std::max(robot().tl()[jIdx][0], -150.0);
+    const double hi = std::min(robot().tu()[jIdx][0], 150.0);
+    const auto k = static_cast<Eigen::Index>(i);
+    tauQP_(k) = robot().mbc().jointTorque[jIdx][0];
+    tauMjlab_(k) = std::clamp(tauFull(mb.jointPosInDof(real_robot.jointIndexByName(jointNames[i]))), lo, hi);
+    if(mjlabActionLaw_) { robot().mbc().jointTorque[jIdx][0] = tauMjlab_(k); }
+  }
 }
 
 Eigen::VectorXd G1RLQPController::computeQaccExt()
@@ -882,6 +908,8 @@ void G1RLQPController::addLog()
   logger().addLogEntry("G1RLQPController_qddQP", [this]() { return qddQP_; });
   logger().addLogEntry("G1RLQPController_alphaReal", [this]() { return alphaReal_; });
   logger().addLogEntry("G1RLQPController_qddBaseID", [this]() { return qddBaseID_; });
+  logger().addLogEntry("G1RLQPController_tauMjlab", [this]() { return tauMjlab_; });
+  logger().addLogEntry("G1RLQPController_tauQP", [this]() { return tauQP_; });
   logger().addLogEntry("G1RLQPController_velCmd", [this]() { return currentVelCmd; });
   logger().addLogEntry("G1RLQPController_pushForce", [this]() { return pushForceVec_; });
 

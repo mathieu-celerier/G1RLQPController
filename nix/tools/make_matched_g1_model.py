@@ -1,5 +1,8 @@
 """Write an mc_mujoco G1 model matched to the mjlab training model (ArmWrenchRamp task).
-Steps (cumulative, chosen with --parts): feet, joints, masses. Timestep 2.5 ms implicitfast always."""
+Steps (cumulative, chosen with --parts): feet, joints, masses. Timestep 2.5 ms implicitfast always.
+Extra parts: priority (mjlab foot geom priority, so the foot friction 0.6 wins over the floor's 1.0),
+collision (mjlab's capsule collision geoms and contact exclusions instead of the mesh hulls),
+limits (mjlab actuator torque limits: hip roll 139 Nm instead of 88), solver (ls_iterations)."""
 import sys, argparse, os, numpy as np, mujoco
 p=argparse.ArgumentParser(); p.add_argument("src"); p.add_argument("out"); p.add_argument("--parts", default="feet,joints,masses"); a=p.parse_args()
 parts=set(a.parts.split(",")) if a.parts else set()
@@ -35,6 +38,32 @@ if "feet" in parts:
         g=b.add_geom(); g.type=mujoco.mjtGeom(A.geom_type[gi]); g.size=A.geom_size[gi].copy(); g.pos=A.geom_pos[gi].copy(); g.quat=A.geom_quat[gi].copy()
         g.friction=A.geom_friction[gi].copy(); g.condim=int(A.geom_condim[gi]); g.solref=A.geom_solref[gi].copy(); g.solimp=A.geom_solimp[gi].copy()
         g.contype=int(A.geom_contype[gi]); g.conaffinity=int(A.geom_conaffinity[gi]); g.group=3; g.margin=float(A.geom_margin[gi])
+if "priority" in parts:
+  for side in ("left","right"):
+    for g in spec.body(f"{side}_ankle_roll_link").geoms:
+      if g.contype or g.conaffinity: g.priority=1
+if "collision" in parts:
+  for b in spec.bodies:
+    if b.name not in ab or b.name.endswith("ankle_roll_link"): continue
+    for g in list(b.geoms):
+      if g.contype or g.conaffinity: spec.delete(g)
+    bi=ab[b.name]
+    for gi in range(A.ngeom):
+      if A.geom_bodyid[gi]==bi and (A.geom_contype[gi] or A.geom_conaffinity[gi]):
+        g=b.add_geom(); g.name=nm(A,mujoco.mjtObj.mjOBJ_GEOM,gi); g.type=mujoco.mjtGeom(A.geom_type[gi]); g.size=A.geom_size[gi].copy(); g.pos=A.geom_pos[gi].copy(); g.quat=A.geom_quat[gi].copy()
+        g.friction=A.geom_friction[gi].copy(); g.condim=int(A.geom_condim[gi]); g.solref=A.geom_solref[gi].copy(); g.solimp=A.geom_solimp[gi].copy()
+        g.contype=int(A.geom_contype[gi]); g.conaffinity=int(A.geom_conaffinity[gi]); g.group=3; g.margin=float(A.geom_margin[gi]); g.priority=int(A.geom_priority[gi])
+  for k in range(A.nexclude):
+    sig=int(A.exclude_signature[k]); b1, b2 = nm(A,mujoco.mjtObj.mjOBJ_BODY,sig>>16), nm(A,mujoco.mjtObj.mjOBJ_BODY,sig&0xFFFF)
+    e=spec.add_exclude(); e.bodyname1=b1; e.bodyname2=b2; print("exclude", b1, b2)
+if "limits" in parts:
+  fr={nm(A,mujoco.mjtObj.mjOBJ_JOINT,A.actuator_trnid[u,0]):A.actuator_forcerange[u].copy() for u in range(A.nu)}
+  for act in spec.actuators:
+    if act.target in fr: act.ctrlrange=fr[act.target].copy()
+  for j in spec.joints:
+    if j.name in fr: j.actfrcrange=fr[j.name].copy(); j.actfrclimited=mujoco.mjtLimited.mjLIMITED_TRUE
+if "solver" in parts:
+  spec.option.ls_iterations=int(A.opt.ls_iterations)
 m=spec.compile(); xml=spec.to_xml()
 # mc_mujoco parses the XML itself and only knows <motor>; MjSpec writes motors as <general> (same dynamics).
 xml=xml.replace("<general ", "<motor ")

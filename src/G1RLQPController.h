@@ -268,6 +268,16 @@ struct G1RLQPController_DLLAPI G1RLQPController : public mc_control::fsm::Contro
   Eigen::VectorXd qddBaseID_ = Eigen::VectorXd::Zero(6);
   void updateAccelerationDiagnostics();
 
+  // MJLab's JointAccelerationAction torque law on the measured state:
+  // tau = H [qdd_base; qdd_ref] + C - tau_ext_f, with qdd_base giving zero base torque and
+  // tau_ext_f the observer estimate low-pass filtered at mjlabTauExtCutoffHz_ (5 Hz in MJLab).
+  // Always computed and logged; sim_test.mjlab_action_law sends it instead of the QP torques.
+  bool mjlabActionLaw_ = false;
+  double mjlabTauExtCutoffHz_ = 5.0;
+  Eigen::VectorXd tauExtFiltered_;
+  Eigen::VectorXd tauMjlab_;  // actuated joints, refJointOrder, after clamping
+  Eigen::VectorXd tauQP_;     // actuated joints, refJointOrder
+
   // Sim-to-sim test harness (config block sim_test, absent = off). Times count from
   // entering acceleration mode.
   //   command_schedule: [[t, vx, vy, wz], ...]   velocity command from t on

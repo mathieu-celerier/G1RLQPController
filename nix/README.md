@@ -10,6 +10,7 @@ so the g1_description URDF gets its `package://` URIs rewritten to absolute path
 (`$G1_WS` defaults to `~/devel/mc_rtc_nix_ws`, sources in `$G1_WS/src` at the pinned commits):
 mc_joystick_plugin, mc_external_forces_observer (+ `deploy/mc_external_forces_observer-local.patch`),
 mc_mujoco (bastien fork + Raphaël's change, `mathieu-celerier/mc_mujoco topic/raphael-live-2026-08-13`,
+**plus the FloatingBase angular-velocity fix, branch `topic/floatingbase-angvel-world` (64b1e89)**,
 downloads MuJoCo 3.3.6 to `~/.mujoco`), g1_mj_description (Noceo200 5a013e0) and this controller.
 
 ```sh
@@ -41,3 +42,20 @@ mc_mujoco -f $G1_WS/run/mc_rtc.yaml --without-visualization --without-mc-rtc-gui
   runs one and prints per-segment tracking, pushes and falls; `tools/fall_rate.py *_test.csv` pools seeds.
 - **The logged `FloatingBase_orientation` is world-to-body (sva convention)**: conjugate it before
   extracting yaw (the scripts here do).
+
+## FloatingBase angular velocity frame (2026-10-21)
+
+mc_mujoco filled the `FloatingBase` body sensor with MuJoCo's free-joint `qvel[3:6]`/`qacc[3:6]`,
+which are body-frame, while mc_rtc's `BodySensorObserver` hands them to `Robot::velW`/`accW` as
+world-frame (the linear parts are world-frame in both). The real robot's roll/pitch rates were thus
+rotated by the base yaw: correct at the initial heading, swapped at ±90°. Every acceleration-policy
+fall through the QP (turns, the stock model's yaw drift, hard pushes) started at |heading| ≈ 90–100°,
+whatever the turn rate, direction, action law or sim model. Fixed in mc_mujoco
+`topic/floatingbase-angvel-world` (upstream rohanpsingh/main has the same code).
+
+- `sim_test.mjlab_action_law: true` sends MJLab's `JointAccelerationAction` torques
+  (H [q̈_base; q̈_ref] + C − τ_ext filtered at `mjlab_tau_ext_cutoff_hz`, 5 Hz) instead of the QP's;
+  `G1RLQPController_tauMjlab` / `_tauQP` are logged either way (they agree to ~20 % RMS, corr 0.95–0.99).
+- `tools/make_matched_g1_model.py` extra parts: `priority` (foot friction 0.6 wins over the floor),
+  `collision` (mjlab capsules + exclusions), `limits` (hip roll 139 Nm), `solver` (ls_iterations 20).
+- `tools/queue_fix.sh`: the post-fix battery for both acceleration policies.

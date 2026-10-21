@@ -93,3 +93,17 @@ at the knees, no foot force sensors, as on the H1).
   full command schedule no fall; 150 N pushes 0 falls in 2792 s; 300 N at the CoM 6 falls in 601 s, 0.60/min
   (ground truth 0.31, mjlab 0.38). Body-frame linear-velocity error 0.008 m/s RMS walking straight, 0.04–0.06
   around pushes with 0.4–0.6 m/s peaks; tilt error 0.3°.
+
+### IMU noise (2026-10-21)
+
+mc_mujoco `topic/imu-noise` (624c665, on top of the angular-velocity fix) adds a robot-config key
+`imuNoise: {gyro, accelerometer, gyroBias, accelerometerBias, seed}` (per-axis white-noise std, std of a constant
+per-axis bias drawn once per sensor). `tools/queue_noise.sh`, `run/tests_noise.txt`, `model_17998`, Tilt pipeline:
+
+| IMU | turn schedule, command schedule | 300 N at CoM, 6 seeds | estimate error, straight walk |
+| --- | --- | --- | --- |
+| perfect | no fall | 0.60 falls/min | tilt 0.06°, velocity 0.008 m/s RMS |
+| n1: gyro 0.005 rad/s, acc 0.03 m/s², bias std 0.005 / 0.05 | no fall | 0.43 falls/min | same as perfect |
+| n4: 4× n1 | no fall | 0.65 falls/min | tilt bias 3.4°, forward velocity −0.06 m/s, gyro bias 0.03 rad/s passed to the observation |
+
+(Ground-truth base state 0.31, mjlab 0.38 falls/min; 5–6 falls per row, so ±40 %.)

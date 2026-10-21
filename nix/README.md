@@ -69,6 +69,7 @@ After the fix (`run/tests_fix.txt`), both ArmWrenchRamp `model_14999` and ArmWre
 | matched model, turn schedule (±0.5 rad/s, on the spot, walking) | no fall, wz ±0.46–0.48 | no fall, wz ±0.49–0.52 |
 | matched, full command schedule | 834 s, no fall | 824 s, no fall |
 | matched, 150 N pelvis pushes (3 seeds) | 0 falls in 2975 s | 0 falls in 2970 s |
-| matched, 300 N pushes (3 seeds) | 3 falls, 2.4/min | 3 falls, 1.5/min |
+| matched, 300 N pushes at the pelvis origin (3 seeds) | 3 falls, 2.4/min | 3 falls, 1.5/min |
+| matched, 300 N pushes at the pelvis CoM (6 seeds, `tools/queue_push_com.sh`) | 6 falls, 0.81/min (mjlab 0.56) | 5 falls, 0.31/min (mjlab 0.38) |
 
-No QP failures outside the 300 N falls.
+No QP failures outside the 300 N falls. The origin-vs-CoM difference is the test, not the controller: `ApplyForcesOnBody` applies the force at the given body-frame point (default origin), 7.6 cm above the pelvis CoM, adding ~0.076·F of pitch/roll torque; mjlab's force push uses `xfrc_applied` at the CoM. `sim_test.pushes.at_com` (default `true`) now matches mjlab.

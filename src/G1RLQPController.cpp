@@ -665,6 +665,7 @@ void G1RLQPController::loadSimTest()
     const auto p = st("pushes");
     pushesEnabled_ = true;
     p("body", pushBody_);
+    p("at_com", pushAtCom_);
     p("force", pushForce_);
     p("duration", pushDuration_);
     p("interval", pushInterval_);
@@ -700,10 +701,16 @@ void G1RLQPController::updateSimTest()
   if(t < pushEndTime_)
   {
     const auto call = robot().name() + "::ApplyForcesOnBody";
+    Eigen::Vector3d pushPoint = Eigen::Vector3d::Zero();  // in the body frame
+    if(pushAtCom_)
+    {
+      const auto & I = robot().mb().body(robot().bodyIndexByName(pushBody_)).inertia();
+      pushPoint = I.momentum() / I.mass();
+    }
     if(datastore().has(call))
     {
       datastore().call<bool, const std::string &, const sva::ForceVecd &, const Eigen::Vector3d>(
-          call, pushBody_, sva::ForceVecd(Eigen::Vector3d::Zero(), pushForceVec_), Eigen::Vector3d::Zero());
+          call, pushBody_, sva::ForceVecd(Eigen::Vector3d::Zero(), pushForceVec_), pushPoint);
     }
   }
   else { pushForceVec_.setZero(); }

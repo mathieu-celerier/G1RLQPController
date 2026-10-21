@@ -289,6 +289,8 @@ struct G1RLQPController_DLLAPI G1RLQPController : public mc_control::fsm::Contro
   std::vector<std::array<double, 4>> commandSchedule_;
   bool pushesEnabled_ = false;
   std::string pushBody_ = "pelvis";
+  // pushes.at_com: apply the force at the body CoM (as MJLab's xfrc_applied) instead of its origin.
+  bool pushAtCom_ = true;
   std::array<double, 2> pushForce_{0.0, 0.0}, pushDuration_{0.1, 0.1}, pushInterval_{2.0, 2.0};
   std::mt19937 pushRng_;
   double nextPushTime_ = 0.0, pushEndTime_ = -1.0;

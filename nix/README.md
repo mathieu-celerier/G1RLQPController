@@ -130,3 +130,21 @@ policies, 495 inputs (no `qacc_ext`). Override files `run/ctl_override_b0813{,_t
 mjlab, same protocol (64 envs × 20 s): 300 N force pushes 0.28 vs 0.38 falls/env-min, turns and controller-model
 test 0 falls for both, tracking grids equivalent. With ground-truth state the two policies are equal; with the
 estimated state and a noisy IMU, 08-13 degrades much more.
+
+## ArmWrenchRamp without qacc_ext (2026-10-23)
+
+`policy/policy_acc_arm_wrench_ramp_no_qacc_14999.onnx` is policy index 5: ArmWrenchRamp retrained (mjlab task
+`...-TrackGated-ArmWrenchRamp-NoQacc`, same seed) with `qacc_ext` removed from the actor, 495 inputs.
+`tools/queue_noq.sh` → `run/tests_noq.txt`, same battery as 08-13:
+
+| mc_mujoco | NoQacc 14999 | ArmWrenchRamp 14999 | JointDR 17998 | 08-13 |
+| --- | --- | --- | --- | --- |
+| stock models, turns, command schedule | no fall | no fall | no fall | no fall |
+| 150 N, 3 seeds | **0.62 falls/min** | 0 | 0 | 0 |
+| 300 N at CoM, ground truth | **4.14** | 0.81 | 0.31 | 0.44 |
+| 300 N, Tilt, perfect IMU | **3.01** | – | 0.60 | 0.98 |
+| Tilt n4: turn / command schedule | no fall | no fall | no fall | falls in the schedule |
+| 300 N, Tilt n4 | **3.50** | 2.02 | 0.65 | 1.65 |
+
+Same picture as mjlab (300 N force push 3.14 vs 0.61 falls/env-min): without `qacc_ext` the wrench-trained
+policy loses its push robustness; command following under IMU noise survives.

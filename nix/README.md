@@ -148,3 +148,23 @@ estimated state and a noisy IMU, 08-13 degrades much more.
 
 Same picture as mjlab (300 N force push 3.14 vs 0.61 falls/env-min): without `qacc_ext` the wrench-trained
 policy loses its push robustness; command following under IMU noise survives.
+
+## ArmWrenchRamp-Tilt fine-tune (2026-10-26)
+
+`policy/policy_acc_arm_wrench_ramp_tilt_ft_17998.onnx` is policy index 6: ArmWrenchRamp `model_14999`
+fine-tuned 3000 iterations in mjlab with the actor's tilt, base velocity and gyro from a torch port of the
+Tilt observer run in the loop on a noisy IMU (task `...-ArmWrenchRamp-Tilt`). Same 670 inputs and scales.
+`tools/queue_tft.sh` → `run/tests_tft.txt`:
+
+| mc_mujoco | Tilt FT 17998 | JointDR 17998 | ArmWrenchRamp 14999 | 08-13 |
+| --- | --- | --- | --- | --- |
+| stock models, turns, command schedule | no fall | no fall | no fall | no fall |
+| 150 N, 3 seeds | 0 | 0 | 0 | 0 |
+| 300 N at CoM, ground truth | 0.59 | 0.31 | 0.81 | 0.44 |
+| 300 N, Tilt, perfect IMU | 0.18 | 0.60 | – | 0.98 |
+| Tilt n4: turn / command schedule | no fall | no fall | no fall | falls in the schedule |
+| 300 N, Tilt n4 | 0.76 | 0.65 | 2.02 | 1.65 |
+
+5–6 falls per cell, so differences under a factor ~2 are counting noise. Forward speed 0.41–0.43 m/s at a
+0.5 command (JointDR 0.46). mjlab shows the gain under large base-velocity bias (0.4 m/s + 300 N: 0.80 vs
+5.16 falls/min); mc_mujoco's Tilt errors are small (~0.01 m/s), so this battery does not separate them.

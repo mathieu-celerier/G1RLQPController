@@ -180,3 +180,16 @@ Tilt FT (index 6) vs JointDR 17998 (index 3), Tilt observer + 4x IMU noise (`nix
   without priority MuJoCo takes the floor's 1.0). Failures (QP infeasible, before a fall) per simulated
   minute, 150 N + turns + schedule: mu 0.5 Tilt FT 0.05 / JointDR 0.22; mu 0.4 0.86 / 1.46;
   mu 0.3 both fail within 2 s (noise-free Tilt 29 s, ground truth 68 s).
+
+## Seed 43: original vs Tilt fine-tune (2026-10-27)
+
+`policy_acc_arm_wrench_ramp_s43_14999.onnx` (index 7, ArmWrenchRamp seed 43, velocity-bias-fragile in mjlab) and
+`policy_acc_arm_wrench_ramp_tilt_ft_s43_17998.onnx` (index 8, its Tilt fine-tune). `tools/queue_s43bias.sh` →
+`run/tests_s43bias.txt`, Tilt observer + 4x IMU noise, `obs_vel_bias` 0 / 0.2 / 0.4 m/s:
+
+| | index 7 (original) | index 8 (Tilt FT) |
+| --- | --- | --- |
+| no bias: straight / turns / schedule | ok / ok / falls at 36 s | ok / ok / ok |
+| bias 0.2: straight / turns / schedule | ok / ok / falls at 35 s | ok / ok / ok |
+| bias 0.4: straight / turns / schedule | ok / falls at 9 s / falls at 49 s | ok / ok / ok |
+| 300 N with bias 0.2 / 0.4 (failures/min, 3 events each) | 3.5 / 1.5 | 0.66 / 3.5 |

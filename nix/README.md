@@ -168,3 +168,15 @@ Tilt observer run in the loop on a noisy IMU (task `...-ArmWrenchRamp-Tilt`). Sa
 5–6 falls per cell, so differences under a factor ~2 are counting noise. Forward speed 0.41–0.43 m/s at a
 0.5 command (JointDR 0.46). mjlab shows the gain under large base-velocity bias (0.4 m/s + 300 N: 0.80 vs
 5.16 falls/min); mc_mujoco's Tilt errors are small (~0.01 m/s), so this battery does not separate them.
+
+## Where Tilt is wrong: velocity bias and slippery feet (2026-10-26)
+
+Tilt FT (index 6) vs JointDR 17998 (index 3), Tilt observer + 4x IMU noise (`nix/tools/queue_tiltwrong.sh`, `queue_slip.sh`).
+
+- `sim_test.obs_vel_bias: [vx, vy, vz]` adds a constant bias to the policy's base_lin_vel observation.
+  At 0.2 and 0.4 m/s neither policy falls on straight, turns or the schedule, but both walk at the
+  biased speed (0.17 m/s for 0.5 commanded at 0.4). 300 N: 2-3 failures per policy and bias, noise.
+- Slippery feet: foot geoms with `priority="1" friction="mu"` (mjlab's G1 has priority 1, friction 0.6;
+  without priority MuJoCo takes the floor's 1.0). Failures (QP infeasible, before a fall) per simulated
+  minute, 150 N + turns + schedule: mu 0.5 Tilt FT 0.05 / JointDR 0.22; mu 0.4 0.86 / 1.46;
+  mu 0.3 both fail within 2 s (noise-free Tilt 29 s, ground truth 68 s).

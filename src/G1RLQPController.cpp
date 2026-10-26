@@ -624,7 +624,7 @@ if(++baseVelocityDebugCounter >= 400)
   baseVelocityDebugCounter = 0;
 }
 
-  linVel[0] = rootVelocityB.linear();
+  linVel[0] = rootVelocityB.linear() + obsVelBias_;
   angVel[0] = rootVelocityB.angular();
 
   // Gravité mondiale exprimée dans le repère de la base.
@@ -650,6 +650,8 @@ void G1RLQPController::loadSimTest()
   simTestEnabled_ = true;
   st("qacc_ext_gain", qaccExtGain_);
   st("tau_ext_base_force_world", tauExtBaseForceWorld_);
+  st("obs_vel_bias", obsVelBias_);
+  if(!obsVelBias_.isZero()) { mc_rtc::log::warning("[G1RLQPController] sim_test: base_lin_vel observation biased by {}", obsVelBias_.transpose()); }
   st("mjlab_action_law", mjlabActionLaw_);
   st("mjlab_tau_ext_cutoff_hz", mjlabTauExtCutoffHz_);
   if(mjlabActionLaw_) { mc_rtc::log::warning("[G1RLQPController] sim_test: MJLab action law replaces the QP torques (tau_ext cutoff {} Hz)", mjlabTauExtCutoffHz_); }

@@ -256,6 +256,9 @@ struct G1RLQPController_DLLAPI G1RLQPController : public mc_control::fsm::Contro
   // sim_test.tau_ext_base_force_world: the base force in externalTorques is in the world frame
   // (mc_mujoco SimulatorGroundTruth export); rotate it to the base frame RBDyn expects.
   bool tauExtBaseForceWorld_ = false;
+  // sim_test.obs_vel_bias: constant [vx, vy, vz] (m/s, base frame) added to the policy's
+  // base_lin_vel observation, as the mjlab --obs-vel-bias evaluation (sim tests only).
+  Eigen::Vector3d obsVelBias_ = Eigen::Vector3d::Zero();
 
   /** Compute qaccExt[0] from the external torques estimated by ExternalForcesObserver. */
   Eigen::VectorXd computeQaccExt();
